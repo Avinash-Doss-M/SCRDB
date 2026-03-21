@@ -407,6 +407,108 @@ body.dashboard-page {
 	box-sizing: border-box;
 }
 
+.dashboard-page .app-layout {
+	width: min(1320px, 100%);
+	margin: 0 auto;
+}
+
+.dashboard-page .app-sidebar {
+	display: none;
+}
+
+.dashboard-page .app-main {
+	display: grid;
+	gap: 18px;
+}
+
+.dashboard-page .spa-page.hidden {
+	display: none;
+}
+
+.dashboard-page .spa-nav-link {
+	width: 100%;
+	text-align: left;
+	border: 1px solid transparent;
+	border-radius: 12px;
+	padding: 10px 12px;
+	font: inherit;
+	font-weight: 600;
+	color: #cfe2fb;
+	background: transparent;
+	cursor: pointer;
+	transition: background-color 180ms ease, border-color 180ms ease, transform 160ms ease;
+}
+
+.dashboard-page .spa-nav-link:hover {
+	background: rgba(93, 183, 255, 0.14);
+	border-color: rgba(93, 183, 255, 0.34);
+	transform: translateY(-1px);
+}
+
+.dashboard-page .spa-nav-link.is-active {
+	background: rgba(255, 216, 90, 0.14);
+	border-color: rgba(255, 216, 90, 0.45);
+	color: #ffeaa2;
+}
+
+.dashboard-page .home-grid {
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 18px;
+}
+
+.dashboard-page .home-grid .today-panel {
+	grid-column: span 4;
+}
+
+.dashboard-page .home-grid .next-days-panel {
+	grid-column: span 8;
+}
+
+.dashboard-page .profile-spa-panel {
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	background: rgba(9, 24, 55, 0.58);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border-radius: 18px;
+	box-shadow:
+		0 12px 30px rgba(0, 0, 0, 0.28),
+		inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	padding: clamp(16px, 2.2vw, 24px);
+	display: grid;
+	gap: 14px;
+}
+
+.dashboard-page .profile-spa-panel h2 {
+	margin: 0;
+	font-size: 1.04rem;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+
+.dashboard-page .profile-spa-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.dashboard-page .profile-toggle-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px 12px;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	background: rgba(7, 20, 45, 0.68);
+}
+
+.dashboard-page .profile-toggle-row input[type="checkbox"] {
+	width: 42px;
+	height: 22px;
+	accent-color: #5db7ff;
+	cursor: pointer;
+}
+
 .dashboard-page .dashboard-shell {
 	width: min(1100px, 100%);
 	margin: 0 auto;
@@ -555,6 +657,8 @@ body.dashboard-page {
 	border-radius: 14px;
 	background: rgba(8, 22, 50, 0.62);
 	padding: 10px 8px;
+	font: inherit;
+	border-width: 1px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -778,6 +882,8 @@ body.dashboard-page {
 
 .dashboard-page .bottom-nav-link {
 	text-decoration: none;
+	border: 0;
+	background: transparent;
 	color: #b9cce5;
 	padding: 7px 4px;
 	border-radius: 12px;
@@ -1237,6 +1343,18 @@ body.profile-page {
 	.dashboard-page .quick-actions {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 	}
+
+	.dashboard-page .home-grid {
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+	}
+
+	.dashboard-page .home-grid .today-panel {
+		grid-column: span 5;
+	}
+
+	.dashboard-page .home-grid .next-days-panel {
+		grid-column: span 7;
+	}
 }
 
 @media (max-width: 720px) {
@@ -1246,11 +1364,18 @@ body.profile-page {
 
 	.dashboard-page .dashboard-header,
 	.dashboard-page .status-banner,
-	.dashboard-page .today-panel,
-	.dashboard-page .next-days-panel,
 	.dashboard-page .timetable-panel,
 	.dashboard-page .tasks-panel,
 	.dashboard-page .holiday-message {
+		grid-column: 1 / -1;
+	}
+
+	.dashboard-page .home-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.dashboard-page .home-grid .today-panel,
+	.dashboard-page .home-grid .next-days-panel {
 		grid-column: 1 / -1;
 	}
 
@@ -1275,6 +1400,10 @@ body.profile-page {
 	.dashboard-page .task-form {
 		grid-template-columns: 1fr;
 	}
+
+	.dashboard-page .profile-spa-grid {
+		grid-template-columns: 1fr;
+	}
 }
 
 @media (min-width: 901px) {
@@ -1282,9 +1411,67 @@ body.profile-page {
 		padding-bottom: clamp(16px, 2.4vw, 28px);
 	}
 
+	.dashboard-page .app-layout {
+		padding-left: 268px;
+	}
+
+	.dashboard-page .app-sidebar {
+		display: block;
+		position: fixed;
+		top: 16px;
+		bottom: 16px;
+		left: 16px;
+		width: 236px;
+		border: 1px solid rgba(255, 255, 255, 0.16);
+		background: rgba(9, 24, 55, 0.58);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		border-radius: 18px;
+		box-shadow:
+			0 12px 30px rgba(0, 0, 0, 0.28),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		padding: 16px 12px;
+		overflow-y: auto;
+	}
+
+	.dashboard-page .sidebar-brand h1 {
+		margin: 0 8px 14px;
+		font-size: 1rem;
+		font-weight: 700;
+		letter-spacing: 0.01em;
+	}
+
+	.dashboard-page .sidebar-nav {
+		display: grid;
+		gap: 8px;
+	}
+
 	.dashboard-page .bottom-nav {
 		display: none;
 	}
+}
+
+.dashboard-page.theme-light {
+	color: #1a2742;
+	background:
+		radial-gradient(900px 440px at 0% -10%, rgba(93, 183, 255, 0.2), transparent 66%),
+		radial-gradient(760px 380px at 100% 100%, rgba(255, 216, 90, 0.22), transparent 72%),
+		linear-gradient(160deg, #e9f1ff, #f6fbff);
+}
+
+.dashboard-page.theme-light .app-sidebar,
+.dashboard-page.theme-light .dashboard-header,
+.dashboard-page.theme-light .status-banner,
+.dashboard-page.theme-light .today-panel,
+.dashboard-page.theme-light .next-days-panel,
+.dashboard-page.theme-light .timetable-panel,
+.dashboard-page.theme-light .tasks-panel,
+.dashboard-page.theme-light .discussion-panel,
+.dashboard-page.theme-light .resources-panel,
+.dashboard-page.theme-light .profile-spa-panel,
+.dashboard-page.theme-light .holiday-message {
+	background: rgba(255, 255, 255, 0.82);
+	border-color: rgba(26, 39, 66, 0.12);
 }
 
 @media (prefers-color-scheme: light) {

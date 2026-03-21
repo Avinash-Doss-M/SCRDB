@@ -7,112 +7,183 @@
 	<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body class="dashboard-page">
-	<main class="dashboard-shell" id="homeSection">
-		<header class="dashboard-header dashboard-topbar">
-			<div class="topbar-left">
-				<p class="dashboard-kicker">Student Productivity</p>
+	<div class="app-layout">
+		<aside class="app-sidebar" aria-label="Sidebar navigation">
+			<div class="sidebar-brand">
 				<h1>Classroom Dashboard</h1>
 			</div>
-			<div class="topbar-right">
-				<a class="profile-avatar-link" href="profile.html" aria-label="Open profile">
-					<span class="profile-avatar" aria-hidden="true">P</span>
-				</a>
-				<p class="dashboard-user" id="dashboardUser">Welcome</p>
-			</div>
-		</header>
+			<nav class="sidebar-nav" id="sidebarNav">
+				<button class="spa-nav-link is-active" data-page="homePage" type="button">🏠 Home</button>
+				<button class="spa-nav-link" data-page="tasksPage" type="button">✅ Tasks</button>
+				<button class="spa-nav-link" data-page="discussionPage" type="button">💬 Discussion</button>
+				<button class="spa-nav-link" data-page="resourcesPage" type="button">📁 Resources</button>
+				<button class="spa-nav-link" data-page="profilePage" type="button">👤 Profile</button>
+			</nav>
+		</aside>
 
-		<nav class="quick-actions" aria-label="Quick actions">
-			<a class="quick-action is-active" href="#discussionSection" data-nav-target="discussionSection">
-				<span class="quick-icon" aria-hidden="true">💬</span>
-				<span>Discussion</span>
-			</a>
-			<a class="quick-action" href="#tasksPanel" data-nav-target="tasksPanel">
-				<span class="quick-icon" aria-hidden="true">✅</span>
-				<span>Tasks</span>
-			</a>
-			<a class="quick-action" href="#resourcesSection" data-nav-target="resourcesSection">
-				<span class="quick-icon" aria-hidden="true">📁</span>
-				<span>Resources</span>
-			</a>
-		</nav>
+		<main class="app-main">
+			<header class="dashboard-header dashboard-topbar">
+				<div class="topbar-left">
+					<p class="dashboard-kicker">Student Productivity</p>
+					<h1>Classroom Dashboard</h1>
+				</div>
+				<div class="topbar-right">
+					<button class="profile-avatar-link spa-nav-link" data-page="profilePage" type="button" aria-label="Open profile">
+						<span class="profile-avatar" aria-hidden="true">P</span>
+					</button>
+					<p class="dashboard-user" id="dashboardUser">Welcome</p>
+				</div>
+			</header>
 
-		<section class="status-banner" id="currentStatusBar" aria-live="polite">Loading status...</section>
+			<section class="spa-page" id="homePage">
+				<nav class="quick-actions" aria-label="Quick actions">
+					<button class="quick-action" data-page="discussionPage" type="button">
+						<span class="quick-icon" aria-hidden="true">💬</span>
+						<span>Discussion</span>
+					</button>
+					<button class="quick-action" data-page="tasksPage" type="button">
+						<span class="quick-icon" aria-hidden="true">✅</span>
+						<span>Tasks</span>
+					</button>
+					<button class="quick-action" data-page="resourcesPage" type="button">
+						<span class="quick-icon" aria-hidden="true">📁</span>
+						<span>Resources</span>
+					</button>
+				</nav>
 
-		<section class="today-panel" aria-labelledby="todayHeading" id="todaySection">
-			<h2 id="todayHeading">Today</h2>
-			<p class="today-date" id="todayDate"></p>
-			<p class="today-order" id="todayOrder"></p>
-			<p class="today-subtext" id="todaySubtext"></p>
-		</section>
+				<section class="status-banner" id="currentStatusBar" aria-live="polite">Loading status...</section>
 
-		<section class="next-days-panel" aria-labelledby="nextDaysHeading">
-			<div class="section-head">
-				<h2 id="nextDaysHeading">Next 7 Days</h2>
-			</div>
-			<div class="next-days-slider" id="nextDaysSlider" aria-label="Upcoming day order cards"></div>
-		</section>
+				<section class="home-grid">
+					<section class="today-panel" aria-labelledby="todayHeading" id="todaySection">
+						<h2 id="todayHeading">Today</h2>
+						<p class="today-date" id="todayDate"></p>
+						<p class="today-order" id="todayOrder"></p>
+						<p class="today-subtext" id="todaySubtext"></p>
+					</section>
 
-		<section class="timetable-panel" id="timetablePanel" aria-labelledby="timetableHeading">
-			<div class="section-head">
-				<h2 id="timetableHeading">Today's Timetable</h2>
-				<p class="current-period-label" id="currentPeriodLabel"></p>
-			</div>
-			<div class="period-grid" id="periodGrid"></div>
-		</section>
+					<section class="next-days-panel" aria-labelledby="nextDaysHeading">
+						<div class="section-head">
+							<h2 id="nextDaysHeading">Next 7 Days</h2>
+						</div>
+						<div class="next-days-slider" id="nextDaysSlider" aria-label="Upcoming day order cards"></div>
+					</section>
+				</section>
 
-		<p class="holiday-message" id="holidayMessage" hidden>No classes today</p>
+				<section class="timetable-panel" id="timetablePanel" aria-labelledby="timetableHeading">
+					<div class="section-head">
+						<h2 id="timetableHeading">Today's Timetable</h2>
+						<p class="current-period-label" id="currentPeriodLabel"></p>
+					</div>
+					<div class="period-grid" id="periodGrid"></div>
+				</section>
 
-		<section class="tasks-panel" id="tasksPanel" aria-labelledby="tasksHeading">
-			<div class="section-head">
-				<h2 id="tasksHeading">Tasks</h2>
-				<p class="tasks-role-note" id="tasksRoleNote"></p>
-			</div>
-			<p class="task-summary" id="taskSummary"></p>
+				<p class="holiday-message" id="holidayMessage" hidden>No classes today</p>
 
-			<form class="task-form" id="taskForm">
-				<input id="taskTitle" name="taskTitle" type="text" placeholder="Task title" maxlength="80" required />
-				<input id="taskSubject" name="taskSubject" type="text" placeholder="Subject" maxlength="30" required />
-				<input id="taskDeadline" name="taskDeadline" type="date" required />
-				<label class="task-checkbox-wrap" for="taskProof">
-					<input id="taskProof" name="taskProof" type="checkbox" />
-					<span>Requires proof</span>
-				</label>
-				<button type="submit" id="taskAddButton">Add Task</button>
-			</form>
+				<section class="tasks-panel home-tasks-summary" aria-labelledby="homeTaskSummaryHeading">
+					<div class="section-head">
+						<h2 id="homeTaskSummaryHeading">Tasks Summary</h2>
+					</div>
+					<p class="task-summary" id="homeTaskSummary">Tasks: 0 Pending | 0 Completed | 0 Missed</p>
+				</section>
+			</section>
 
-			<div class="task-list" id="taskList"></div>
-		</section>
+			<section class="spa-page hidden" id="tasksPage">
+				<section class="tasks-panel" id="tasksPanel" aria-labelledby="tasksHeading">
+					<div class="section-head">
+						<h2 id="tasksHeading">Tasks</h2>
+						<p class="tasks-role-note" id="tasksRoleNote"></p>
+					</div>
+					<p class="task-summary" id="taskSummary"></p>
 
-		<section class="discussion-panel" id="discussionSection" aria-labelledby="discussionHeading">
-			<h2 id="discussionHeading">Discussion</h2>
-			<p class="discussion-note">Class discussion area can be connected here.</p>
-		</section>
+					<form class="task-form" id="taskForm">
+						<input id="taskTitle" name="taskTitle" type="text" placeholder="Task title" maxlength="80" required />
+						<input id="taskSubject" name="taskSubject" type="text" placeholder="Subject" maxlength="30" required />
+						<input id="taskDeadline" name="taskDeadline" type="date" required />
+						<label class="task-checkbox-wrap" for="taskProof">
+							<input id="taskProof" name="taskProof" type="checkbox" />
+							<span>Requires proof</span>
+						</label>
+						<button type="submit" id="taskAddButton">Add Task</button>
+					</form>
 
-		<section class="resources-panel" id="resourcesSection" aria-labelledby="resourcesHeading">
-			<h2 id="resourcesHeading">Resources</h2>
-			<p class="discussion-note">Shared study resources can be listed here.</p>
-		</section>
-	</main>
+					<div class="task-list" id="taskList"></div>
+				</section>
+			</section>
+
+			<section class="spa-page hidden" id="discussionPage">
+				<section class="discussion-panel" aria-labelledby="discussionHeading">
+					<h2 id="discussionHeading">Discussion</h2>
+					<p class="discussion-note">Class discussion area can be connected here.</p>
+				</section>
+			</section>
+
+			<section class="spa-page hidden" id="resourcesPage">
+				<section class="resources-panel" aria-labelledby="resourcesHeading">
+					<h2 id="resourcesHeading">Resources</h2>
+					<p class="discussion-note">Shared study resources can be listed here.</p>
+				</section>
+			</section>
+
+			<section class="spa-page hidden" id="profilePage">
+				<section class="profile-spa-panel" aria-labelledby="profileHeading">
+					<h2 id="profileHeading">Profile</h2>
+					<div class="profile-spa-grid">
+						<div class="profile-row">
+							<p class="profile-label">Name</p>
+							<p class="profile-value" id="profileName">-</p>
+						</div>
+						<div class="profile-row">
+							<p class="profile-label">Email</p>
+							<p class="profile-value" id="profileEmail">-</p>
+						</div>
+						<div class="profile-row">
+							<p class="profile-label">Role</p>
+							<p class="profile-value" id="profileRole">-</p>
+						</div>
+						<div class="profile-row">
+							<p class="profile-label">Completed Tasks</p>
+							<p class="profile-value" id="completedTasksCount">0</p>
+						</div>
+					</div>
+
+					<div class="profile-toggle-row">
+						<label for="themeToggle" class="profile-label">Dark / Light Mode</label>
+						<input type="checkbox" id="themeToggle" />
+					</div>
+
+					<div class="profile-actions">
+						<button type="button" class="profile-logout-btn" id="logoutBtn">Log Out</button>
+					</div>
+					<p class="profile-message" id="profileMessage" role="status" aria-live="polite"></p>
+				</section>
+			</section>
+		</main>
+	</div>
 
 	<nav class="bottom-nav" id="bottomNav" aria-label="Primary">
-		<a class="bottom-nav-link is-active" href="#homeSection" data-nav-target="homeSection">
+		<button class="bottom-nav-link is-active" data-page="homePage" type="button">
 			<span class="bottom-nav-icon" aria-hidden="true">🏠</span>
 			<span>Home</span>
-		</a>
-		<a class="bottom-nav-link" href="#tasksPanel" data-nav-target="tasksPanel">
+		</button>
+		<button class="bottom-nav-link" data-page="tasksPage" type="button">
 			<span class="bottom-nav-icon" aria-hidden="true">✅</span>
 			<span>Tasks</span>
-		</a>
-		<a class="bottom-nav-link" href="#discussionSection" data-nav-target="discussionSection">
+		</button>
+		<button class="bottom-nav-link" data-page="discussionPage" type="button">
 			<span class="bottom-nav-icon" aria-hidden="true">💬</span>
 			<span>Discussion</span>
-		</a>
-		<a class="bottom-nav-link" href="profile.html">
+		</button>
+		<button class="bottom-nav-link" data-page="resourcesPage" type="button">
+			<span class="bottom-nav-icon" aria-hidden="true">📁</span>
+			<span>Resources</span>
+		</button>
+		<button class="bottom-nav-link" data-page="profilePage" type="button">
 			<span class="bottom-nav-icon" aria-hidden="true">👤</span>
 			<span>Profile</span>
-		</a>
+		</button>
 	</nav>
 
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 	<script src="../js/script.js"></script>
 </body>
 </html>

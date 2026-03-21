@@ -319,6 +319,14 @@
 	const taskAddButton = document.getElementById("taskAddButton");
 	const tasksRoleNote = document.getElementById("tasksRoleNote");
 	const taskSummary = document.getElementById("taskSummary");
+	const homeTaskSummary = document.getElementById("homeTaskSummary");
+	const profileName = document.getElementById("profileName");
+	const profileEmail = document.getElementById("profileEmail");
+	const profileRole = document.getElementById("profileRole");
+	const completedTasksCount = document.getElementById("completedTasksCount");
+	const logoutBtn = document.getElementById("logoutBtn");
+	const profileMessage = document.getElementById("profileMessage");
+	const themeToggle = document.getElementById("themeToggle");
 
 	if (
 		!todayDateEl ||
@@ -339,7 +347,15 @@
 		!taskProofInput ||
 		!taskAddButton ||
 		!tasksRoleNote ||
-		!taskSummary
+		!taskSummary ||
+		!homeTaskSummary ||
+		!profileName ||
+		!profileEmail ||
+		!profileRole ||
+		!completedTasksCount ||
+		!logoutBtn ||
+		!profileMessage ||
+		!themeToggle
 	) {
 		return;
 	}
@@ -391,10 +407,13 @@
 
 	const TASKS_STORAGE_KEY = "classroomTasks";
 	const currentRole = localStorage.getItem("role") || "student";
+	const userEmail = localStorage.getItem("userEmail") || "Guest";
+	const userName = localStorage.getItem("userName") || userEmail.split("@")[0];
 	let tasks = loadTasks();
 	let selectedDateIso = formatISODate(new Date());
 
 	configureTaskPermissions();
+	setupProfileSection();
 	taskForm.addEventListener("submit", addTask);
 	taskList.addEventListener("click", handleTaskListClick);
 	taskList.addEventListener("change", handleTaskProofChange);
@@ -624,8 +643,8 @@
 		renderTimetable();
 		renderTasks();
 
-		const userEmail = localStorage.getItem("userEmail") || "Guest";
 		dashboardUser.textContent = "Logged in: " + userEmail + " (" + currentRole + ")";
+		renderProfileCard();
 	}
 
 	function handleNextDaySelection(event) {
@@ -654,6 +673,8 @@
 	function renderTasks() {
 		const summary = getTaskSummary();
 		taskSummary.textContent = "Tasks: " + summary.pending + " Pending | " + summary.completed + " Completed | " + summary.missed + " Missed";
+		homeTaskSummary.textContent = taskSummary.textContent;
+		completedTasksCount.textContent = String(summary.completed);
 
 		if (tasks.length === 0) {
 			taskList.innerHTML = '<p class="task-empty">No tasks yet. Add a new task to get started.</p>';
@@ -684,6 +705,47 @@
 				].join("");
 			})
 			.join("");
+	}
+
+	function setupProfileSection() {
+		themeToggle.checked = localStorage.getItem("themeMode") === "light";
+		applyTheme(themeToggle.checked ? "light" : "dark");
+
+		themeToggle.addEventListener("change", function toggleThemeMode() {
+			const mode = themeToggle.checked ? "light" : "dark";
+			localStorage.setItem("themeMode", mode);
+			applyTheme(mode);
+		});
+
+		logoutBtn.addEventListener("click", handleDashboardLogout);
+	}
+
+	function renderProfileCard() {
+		profileName.textContent = userName;
+		profileEmail.textContent = userEmail;
+		profileRole.textContent = currentRole;
+	}
+
+	async function handleDashboardLogout() {
+		logoutBtn.disabled = true;
+		profileMessage.textContent = "Signing out...";
+
+		if (window.supabase && typeof window.supabase.createClient === "function") {
+			const supabaseClient = window.supabase.createClient(
+				"https://zusvmyxaqidypumehfsr.supabase.co",
+				"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1c3ZteXhhcWlkeXB1bWVoZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODk1MjksImV4cCI6MjA4OTY2NTUyOX0.j2cgjwqn0Y5edp0MrYcfcXOQwBIr9bebz_KGv70KYdo"
+			);
+			await supabaseClient.auth.signOut();
+		}
+
+		localStorage.removeItem("userEmail");
+		localStorage.removeItem("userName");
+		localStorage.removeItem("role");
+		window.location.href = "../index.html";
+	}
+
+	function applyTheme(mode) {
+		document.body.classList.toggle("theme-light", mode === "light");
 	}
 
 	function getTaskSummary() {
@@ -1022,38 +1084,45 @@
 		return;
 	}
 
-	const quickLinks = Array.from(document.querySelectorAll(".quick-action[data-nav-target]"));
-	const bottomLinks = Array.from(document.querySelectorAll(".bottom-nav-link[data-nav-target]"));
-	const navigableLinks = quickLinks.concat(bottomLinks);
+	const pageSections = Array.from(document.querySelectorAll(".spa-page"));
+	const navItems = Array.from(document.querySelectorAll(".spa-nav-link[data-page], .quick-action[data-page], .bottom-nav-link[data-page]"));
 
-	if (navigableLinks.length === 0) {
+	if (pageSections.length === 0 || navItems.length === 0) {
 		return;
 	}
 
-	navigableLinks.forEach(function bindLink(link) {
-		link.addEventListener("click", function activateLink() {
-			const target = link.getAttribute("data-nav-target");
-			setActiveState(target);
+	navItems.forEach(function bindNav(item) {
+		item.addEventListener("click", function handleSpaNav(event) {
+			event.preventDefault();
+			const pageId = item.getAttribute("data-page");
+			showPage(pageId);
+			setActiveNav(pageId);
 		});
 	});
 
-	const initialTarget =
-		(window.location.hash && window.location.hash.replace("#", "")) ||
-		"homeSection";
-	setActiveState(initialTarget);
+	const initialPage = "homePage";
+	showPage(initialPage);
+	setActiveNav(initialPage);
 
-	function setActiveState(targetId) {
-		quickLinks.forEach(function resetQuick(link) {
-			link.classList.remove("is-active");
-			if (link.getAttribute("data-nav-target") === targetId) {
-				link.classList.add("is-active");
-			}
+	window.showPage = showPage;
+	window.setActiveNav = setActiveNav;
+
+	function showPage(pageId) {
+		pageSections.forEach(function hideSection(section) {
+			section.classList.add("hidden");
 		});
 
-		bottomLinks.forEach(function resetBottom(link) {
-			link.classList.remove("is-active");
-			if (link.getAttribute("data-nav-target") === targetId) {
-				link.classList.add("is-active");
+		const activeSection = document.getElementById(pageId);
+		if (activeSection) {
+			activeSection.classList.remove("hidden");
+		}
+	}
+
+	function setActiveNav(pageId) {
+		navItems.forEach(function resetState(item) {
+			item.classList.remove("is-active");
+			if (item.getAttribute("data-page") === pageId) {
+				item.classList.add("is-active");
 			}
 		});
 	}
