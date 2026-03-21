@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Classroom Dashboard Login</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="login-page">
+	<main class="login-shell" aria-live="polite">
+		<section class="intro-screen" id="introScreen" aria-label="Classroom intro">
+			<p class="intro-mark">CLASS ROOM <img class="intro-board" src="images/board_icon" alt="" aria-hidden="true" /></p>
+		</section>
+
+		<section class="login-panel" id="loginPanel" aria-label="Login form" aria-hidden="true">
+			<article class="login-card">
+				<header class="login-header">
+					<h1 id="typingText" class="typing-text">Classroom Dashboard</h1>
+					<p>Sign in with your college email</p>
+				</header>
+
+				<form id="loginForm" class="login-form" novalidate>
+					<label for="emailInput" class="sr-only">College email</label>
+					<input
+						id="emailInput"
+						name="email"
+						type="email"
+						inputmode="email"
+						autocomplete="email"
+						placeholder="name@amjaincollege.edu.in"
+						required
+						aria-describedby="credentialHelp loginMessage"
+					/>
+					<label for="passwordInput" class="sr-only">Password</label>
+					<div class="password-field">
+						<input
+							id="passwordInput"
+							name="password"
+							type="password"
+							autocomplete="current-password"
+							placeholder="Password"
+							required
+							aria-describedby="credentialHelp loginMessage"
+						/>
+						<button
+							type="button"
+							class="password-toggle"
+							id="passwordToggle"
+							aria-label="Show password"
+							aria-controls="passwordInput"
+						>
+							<span class="eye-icon" aria-hidden="true"></span>
+						</button>
+					</div>
+					<button type="submit" id="loginButton">Continue</button>
+					<p id="credentialHelp" class="access-hint">Teacher / CR access</p>
+					<p id="loginMessage" class="login-message" role="status" aria-live="polite"></p>
+				</form>
+			</article>
+		</section>
+	</main>
+
+	<script src="js/script.js"></script>
+</body>
+</html>

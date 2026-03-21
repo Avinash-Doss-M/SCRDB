@@ -104,7 +104,7 @@
 		localStorage.setItem("role", role);
 
 		window.setTimeout(function redirectToDashboard() {
-			window.location.href = "dashboard.html";
+			window.location.href = "pages/dashboard.html";
 		}, REDIRECT_DELAY_MS);
 	}
 
@@ -178,6 +178,18 @@
 })();
 
 (function initClassroomDashboard() {
+	const isDashboardPage = document.body && document.body.classList.contains("dashboard-page");
+	if (!isDashboardPage) {
+		return;
+	}
+
+	const userEmailCheck = localStorage.getItem("userEmail");
+	const roleCheck = localStorage.getItem("role");
+
+	if (!userEmailCheck || !roleCheck) {
+		window.location.href = "../index.html";
+		return;
+	}
 	const todayDateEl = document.getElementById("todayDate");
 	const todayOrderEl = document.getElementById("todayOrder");
 	const todaySubtextEl = document.getElementById("todaySubtext");
@@ -301,15 +313,6 @@
 			return item.date === targetIso;
 		});
 		return entry && entry.type === "working" ? entry.dayOrder : null;
-	}
-
-	function getTodayTimetable() {
-		const todayData = getTodayData();
-		if (todayData.type !== "working" || !todayData.dayOrder) {
-			return [];
-		}
-
-		return timetable[todayData.dayOrder] || [];
 	}
 
 	function getCurrentTime() {
