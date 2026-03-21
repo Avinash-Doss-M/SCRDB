@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Classroom Dashboard</title>
+	<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="dashboard-page">
+	<main class="dashboard-shell">
+		<header class="dashboard-header">
+			<div>
+				<p class="dashboard-kicker">Student Productivity</p>
+				<h1>Classroom Dashboard</h1>
+			</div>
+			<p class="dashboard-user" id="dashboardUser">Welcome</p>
+		</header>
+
+		<section class="status-banner" id="currentStatusBar" aria-live="polite">Loading status...</section>
+
+		<section class="today-panel" aria-labelledby="todayHeading">
+			<h2 id="todayHeading">Today</h2>
+			<p class="today-date" id="todayDate"></p>
+			<p class="today-order" id="todayOrder"></p>
+			<p class="today-subtext" id="todaySubtext"></p>
+		</section>
+
+		<section class="next-days-panel" aria-labelledby="nextDaysHeading">
+			<div class="section-head">
+				<h2 id="nextDaysHeading">Next 7 Days</h2>
+			</div>
+			<div class="next-days-slider" id="nextDaysSlider" aria-label="Upcoming day order cards"></div>
+		</section>
+
+		<section class="timetable-panel" id="timetablePanel" aria-labelledby="timetableHeading">
+			<div class="section-head">
+				<h2 id="timetableHeading">Today's Timetable</h2>
+				<p class="current-period-label" id="currentPeriodLabel"></p>
+			</div>
+			<div class="period-grid" id="periodGrid"></div>
+		</section>
+
+		<p class="holiday-message" id="holidayMessage" hidden>No classes today</p>
+
+		<section class="tasks-panel" id="tasksPanel" aria-labelledby="tasksHeading">
+			<div class="section-head">
+				<h2 id="tasksHeading">Tasks</h2>
+				<p class="tasks-role-note" id="tasksRoleNote"></p>
+			</div>
+			<p class="task-summary" id="taskSummary"></p>
+
+			<form class="task-form" id="taskForm">
+				<input id="taskTitle" name="taskTitle" type="text" placeholder="Task title" maxlength="80" required />
+				<input id="taskSubject" name="taskSubject" type="text" placeholder="Subject" maxlength="30" required />
+				<input id="taskDeadline" name="taskDeadline" type="date" required />
+				<label class="task-checkbox-wrap" for="taskProof">
+					<input id="taskProof" name="taskProof" type="checkbox" />
+					<span>Requires proof</span>
+				</label>
+				<button type="submit" id="taskAddButton">Add Task</button>
+			</form>
+
+			<div class="task-list" id="taskList"></div>
+		</section>
+	</main>
+
+	<script src="../js/script.js"></script>
+</body>
+</html>
