@@ -82,7 +82,7 @@
 
 		await supabaseClient.auth.signOut();
 
-		const redirectTo = window.location.origin + window.location.pathname;
+		const redirectTo = window.location.origin;
 		const authResult = await supabaseClient.auth.signInWithOAuth({
 			provider: "google",
 			options: {
