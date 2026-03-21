@@ -20,39 +20,7 @@
 				</header>
 
 				<form id="loginForm" class="login-form" novalidate>
-					<label for="emailInput" class="sr-only">College email</label>
-					<input
-						id="emailInput"
-						name="email"
-						type="email"
-						inputmode="email"
-						autocomplete="email"
-						placeholder="name@amjaincollege.edu.in"
-						required
-						aria-describedby="credentialHelp loginMessage"
-					/>
-					<label for="passwordInput" class="sr-only">Password</label>
-					<div class="password-field">
-						<input
-							id="passwordInput"
-							name="password"
-							type="password"
-							autocomplete="current-password"
-							placeholder="Password"
-							required
-							aria-describedby="credentialHelp loginMessage"
-						/>
-						<button
-							type="button"
-							class="password-toggle"
-							id="passwordToggle"
-							aria-label="Show password"
-							aria-controls="passwordInput"
-						>
-							<span class="eye-icon" aria-hidden="true"></span>
-						</button>
-					</div>
-					<button type="submit" id="loginButton">Continue</button>
+					<button type="button" id="googleLoginBtn">Continue with Google</button>
 					<p id="credentialHelp" class="access-hint">Teacher / CR access</p>
 					<p id="loginMessage" class="login-message" role="status" aria-live="polite"></p>
 				</form>
@@ -60,6 +28,7 @@
 		</section>
 	</main>
 
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 	<script src="js/script.js"></script>
 </body>
 </html>

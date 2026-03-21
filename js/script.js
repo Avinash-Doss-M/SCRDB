@@ -1,37 +1,40 @@
 (function initClassroomLogin() {
 	const introScreen = document.getElementById("introScreen");
 	const loginPanel = document.getElementById("loginPanel");
-	const loginForm = document.getElementById("loginForm");
 	const typingText = document.getElementById("typingText");
-	const emailInput = document.getElementById("emailInput");
-	const passwordInput = document.getElementById("passwordInput");
-	const passwordToggle = document.getElementById("passwordToggle");
-	const loginButton = document.getElementById("loginButton");
+	const googleLoginBtn = document.getElementById("googleLoginBtn");
 	const loginMessage = document.getElementById("loginMessage");
 
-	if (!introScreen || !loginPanel || !loginForm || !emailInput || !passwordInput || !passwordToggle || !loginButton || !loginMessage || !typingText) {
+	if (!introScreen || !loginPanel || !typingText || !googleLoginBtn || !loginMessage) {
+		return;
+	}
+
+	if (!window.supabase || typeof window.supabase.createClient !== "function") {
+		setMessage("Authentication service is unavailable.", false);
 		return;
 	}
 
 	const INTRO_DELAY_MS = 1800;
-	const REDIRECT_DELAY_MS = 500;
 	const TYPE_SPEED_MS = 95;
 	const DELETE_SPEED_MS = 55;
 	const HOLD_AFTER_TYPE_MS = 1000;
 	const HOLD_AFTER_DELETE_MS = 320;
 	const DOMAIN = "@amjaincollege.edu.in";
+	const SUPABASE_URL = "https://zusvmyxaqidypumehfsr.supabase.co";
+	const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1c3ZteXhhcWlkeXB1bWVoZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODk1MjksImV4cCI6MjA4OTY2NTUyOX0.j2cgjwqn0Y5edp0MrYcfcXOQwBIr9bebz_KGv70KYdo";
 	const TITLE_TEXTS = ["Classroom Dashboard", "Login"];
 	const SPECIAL_ROLES = {
 		"24h310@amjaincollege.edu.in": "cr",
 		"vijiyamalini@amjaincollege.edu.in": "class_incharge",
 		"24h319@amjaincollege.edu.in": "tech_support"
 	};
+	const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 	typingText.textContent = "";
 	void runTitleTypewriter();
 	window.setTimeout(showLoginPanel, INTRO_DELAY_MS);
-	loginForm.addEventListener("submit", handleLoginSubmit);
-	passwordToggle.addEventListener("click", togglePasswordVisibility);
+	googleLoginBtn.addEventListener("click", handleGoogleLogin);
+	void handleSupabaseUserOnLoad();
 
 	async function runTitleTypewriter() {
 		let phraseIndex = 0;
@@ -71,60 +74,55 @@
 		introScreen.classList.add("is-exit");
 		loginPanel.classList.add("is-active");
 		loginPanel.setAttribute("aria-hidden", "false");
-
-		window.setTimeout(function focusEmail() {
-			emailInput.focus();
-		}, 260);
 	}
 
-	function handleLoginSubmit(event) {
-		event.preventDefault();
-		setMessage("");
+	async function handleGoogleLogin() {
+		googleLoginBtn.disabled = true;
+		setMessage("Redirecting to Google...", true);
 
-		const email = emailInput.value.trim().toLowerCase();
-		const password = passwordInput.value.trim();
-		const authResult = validateCredentials(email, password);
+		await supabaseClient.auth.signOut();
 
-		if (!authResult.isEmailAllowed) {
-			setMessage("Access restricted to this classroom", false);
+		const redirectTo = window.location.origin + window.location.pathname;
+		const authResult = await supabaseClient.auth.signInWithOAuth({
+			provider: "google",
+			options: {
+				redirectTo,
+				queryParams: {
+					prompt: "select_account"
+				}
+			}
+		});
+
+		if (authResult.error) {
+			googleLoginBtn.disabled = false;
+			setMessage(authResult.error.message || "Unable to start Google sign-in.", false);
+		}
+	}
+
+	async function handleSupabaseUserOnLoad() {
+		const userResult = await supabaseClient.auth.getUser();
+		if (userResult.error || !userResult.data || !userResult.data.user) {
+			googleLoginBtn.disabled = false;
 			return;
 		}
 
-		if (!authResult.isPasswordValid) {
-			setMessage("Incorrect password", false);
-			return;
-		}
-
-		const role = authResult.role;
-
-		loginButton.disabled = true;
-		setMessage("Access granted. Redirecting...", true);
-
-		localStorage.setItem("userEmail", email);
-		localStorage.setItem("role", role);
-
-		window.setTimeout(function redirectToDashboard() {
-			window.location.href = "pages/dashboard.html";
-		}, REDIRECT_DELAY_MS);
-	}
-
-	function validateCredentials(email, password) {
+		const email = String(userResult.data.user.email || "").toLowerCase();
+		const userName = resolveUserName(userResult.data.user, email);
 		const role = resolveRole(email);
 
 		if (!role) {
-			return {
-				isEmailAllowed: false,
-				isPasswordValid: false,
-				role: null
-			};
+			clearLocalAuth();
+			await supabaseClient.auth.signOut();
+			window.alert("Access restricted");
+			googleLoginBtn.disabled = false;
+			setMessage("Access restricted", false);
+			return;
 		}
 
-		const expectedPassword = resolveExpectedPassword(email, role);
-		return {
-			isEmailAllowed: true,
-			isPasswordValid: password === expectedPassword,
-			role
-		};
+		localStorage.setItem("userEmail", email);
+		localStorage.setItem("userName", userName);
+		localStorage.setItem("role", role);
+		window.location.href = "pages/dashboard.html";
 	}
 
 	function resolveRole(email) {
@@ -151,29 +149,141 @@
 		return "student";
 	}
 
-	function resolveExpectedPassword(email, role) {
-		if (role === "class_incharge") {
-			return "Login@classincharge";
-		}
-
-		if (role === "cr") {
-			return "Login@classrep310";
-		}
-
-		const localPart = email.split("@")[0];
-		return "Login@" + localPart;
+	function clearLocalAuth() {
+		localStorage.removeItem("userName");
+		localStorage.removeItem("userEmail");
+		localStorage.removeItem("role");
 	}
 
-	function togglePasswordVisibility() {
-		const isVisible = passwordInput.type === "text";
-		passwordInput.type = isVisible ? "password" : "text";
-		passwordToggle.classList.toggle("is-visible", !isVisible);
-		passwordToggle.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
+	function resolveUserName(user, email) {
+		const userMeta = user.user_metadata || {};
+		const identityData =
+			user.identities && user.identities[0] && user.identities[0].identity_data
+				? user.identities[0].identity_data
+				: {};
+
+		const preferredNames = [
+			userMeta.full_name,
+			userMeta.name,
+			identityData.full_name,
+			identityData.name,
+			[userMeta.given_name, userMeta.family_name].filter(Boolean).join(" "),
+			[identityData.given_name, identityData.family_name].filter(Boolean).join(" ")
+		];
+
+		for (let i = 0; i < preferredNames.length; i += 1) {
+			if (preferredNames[i] && String(preferredNames[i]).trim()) {
+				return String(preferredNames[i]).trim();
+			}
+		}
+
+		return email.split("@")[0];
 	}
 
 	function setMessage(text, isSuccess) {
 		loginMessage.textContent = text;
 		loginMessage.classList.toggle("is-success", Boolean(isSuccess));
+	}
+})();
+
+(function initProfilePage() {
+	const isProfilePage = document.body && document.body.classList.contains("profile-page");
+	if (!isProfilePage) {
+		return;
+	}
+
+	const profileEmail = document.getElementById("profileEmail");
+	const profileName = document.getElementById("profileName");
+	const profileRole = document.getElementById("profileRole");
+	const logoutBtn = document.getElementById("logoutBtn");
+	const profileMessage = document.getElementById("profileMessage");
+
+	if (!profileEmail || !profileName || !profileRole || !logoutBtn || !profileMessage) {
+		return;
+	}
+
+	const userName = localStorage.getItem("userName");
+	const userEmail = localStorage.getItem("userEmail");
+	const role = localStorage.getItem("role");
+
+	if (!userEmail || !role) {
+		window.location.href = "../index.html";
+		return;
+	}
+
+	profileName.textContent = userName || userEmail.split("@")[0];
+	profileEmail.textContent = userEmail;
+	profileRole.textContent = role;
+	void syncProfileFromSupabase();
+
+	logoutBtn.addEventListener("click", handleLogout);
+
+	async function handleLogout() {
+		logoutBtn.disabled = true;
+		profileMessage.textContent = "Signing out...";
+
+		if (window.supabase && typeof window.supabase.createClient === "function") {
+			const supabaseClient = window.supabase.createClient(
+				"https://zusvmyxaqidypumehfsr.supabase.co",
+				"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1c3ZteXhhcWlkeXB1bWVoZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODk1MjksImV4cCI6MjA4OTY2NTUyOX0.j2cgjwqn0Y5edp0MrYcfcXOQwBIr9bebz_KGv70KYdo"
+			);
+			await supabaseClient.auth.signOut();
+		}
+
+		localStorage.removeItem("userEmail");
+		localStorage.removeItem("userName");
+		localStorage.removeItem("role");
+		window.location.href = "../index.html";
+	}
+
+	async function syncProfileFromSupabase() {
+		if (!window.supabase || typeof window.supabase.createClient !== "function") {
+			return;
+		}
+
+		const supabaseClient = window.supabase.createClient(
+			"https://zusvmyxaqidypumehfsr.supabase.co",
+			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1c3ZteXhhcWlkeXB1bWVoZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODk1MjksImV4cCI6MjA4OTY2NTUyOX0.j2cgjwqn0Y5edp0MrYcfcXOQwBIr9bebz_KGv70KYdo"
+		);
+
+		const userResult = await supabaseClient.auth.getUser();
+		if (userResult.error || !userResult.data || !userResult.data.user) {
+			return;
+		}
+
+		const supabaseUser = userResult.data.user;
+		const liveEmail = String(supabaseUser.email || userEmail).toLowerCase();
+		const liveName = extractProfileName(supabaseUser, liveEmail);
+
+		profileEmail.textContent = liveEmail;
+		profileName.textContent = liveName;
+		localStorage.setItem("userEmail", liveEmail);
+		localStorage.setItem("userName", liveName);
+	}
+
+	function extractProfileName(user, email) {
+		const userMeta = user.user_metadata || {};
+		const identityData =
+			user.identities && user.identities[0] && user.identities[0].identity_data
+				? user.identities[0].identity_data
+				: {};
+
+		const candidateNames = [
+			userMeta.full_name,
+			userMeta.name,
+			identityData.full_name,
+			identityData.name,
+			[userMeta.given_name, userMeta.family_name].filter(Boolean).join(" "),
+			[identityData.given_name, identityData.family_name].filter(Boolean).join(" ")
+		];
+
+		for (let i = 0; i < candidateNames.length; i += 1) {
+			if (candidateNames[i] && String(candidateNames[i]).trim()) {
+				return String(candidateNames[i]).trim();
+			}
+		}
+
+		return email.split("@")[0];
 	}
 })();
 

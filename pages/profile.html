@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Profile - Classroom Dashboard</title>
+	<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="profile-page">
+	<main class="profile-shell">
+		<section class="profile-card">
+			<header class="profile-header">
+				<p class="profile-kicker">Account</p>
+				<h1>Profile</h1>
+				<p class="profile-subtitle">Your classroom access details</p>
+			</header>
+
+			<div class="profile-details">
+				<div class="profile-row">
+					<p class="profile-label">Name</p>
+					<p class="profile-value" id="profileName">-</p>
+				</div>
+				<div class="profile-row">
+					<p class="profile-label">Email</p>
+					<p class="profile-value" id="profileEmail">-</p>
+				</div>
+				<div class="profile-row">
+					<p class="profile-label">Role</p>
+					<p class="profile-value" id="profileRole">-</p>
+				</div>
+			</div>
+
+			<div class="profile-actions">
+				<a class="profile-link-btn" href="dashboard.html">Back to Dashboard</a>
+				<button type="button" class="profile-logout-btn" id="logoutBtn">Log Out</button>
+			</div>
+			<p class="profile-message" id="profileMessage" role="status" aria-live="polite"></p>
+		</section>
+	</main>
+
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+	<script src="../js/script.js"></script>
+</body>
+</html>
