@@ -7,21 +7,38 @@
 	<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body class="dashboard-page">
-	<main class="dashboard-shell">
-		<header class="dashboard-header">
-			<div>
+	<main class="dashboard-shell" id="homeSection">
+		<header class="dashboard-header dashboard-topbar">
+			<div class="topbar-left">
 				<p class="dashboard-kicker">Student Productivity</p>
 				<h1>Classroom Dashboard</h1>
 			</div>
-			<div class="dashboard-header-actions">
-				<a class="dashboard-nav-btn" href="profile.html">Profile</a>
+			<div class="topbar-right">
+				<a class="profile-avatar-link" href="profile.html" aria-label="Open profile">
+					<span class="profile-avatar" aria-hidden="true">P</span>
+				</a>
 				<p class="dashboard-user" id="dashboardUser">Welcome</p>
 			</div>
 		</header>
 
+		<nav class="quick-actions" aria-label="Quick actions">
+			<a class="quick-action is-active" href="#discussionSection" data-nav-target="discussionSection">
+				<span class="quick-icon" aria-hidden="true">💬</span>
+				<span>Discussion</span>
+			</a>
+			<a class="quick-action" href="#tasksPanel" data-nav-target="tasksPanel">
+				<span class="quick-icon" aria-hidden="true">✅</span>
+				<span>Tasks</span>
+			</a>
+			<a class="quick-action" href="#resourcesSection" data-nav-target="resourcesSection">
+				<span class="quick-icon" aria-hidden="true">📁</span>
+				<span>Resources</span>
+			</a>
+		</nav>
+
 		<section class="status-banner" id="currentStatusBar" aria-live="polite">Loading status...</section>
 
-		<section class="today-panel" aria-labelledby="todayHeading">
+		<section class="today-panel" aria-labelledby="todayHeading" id="todaySection">
 			<h2 id="todayHeading">Today</h2>
 			<p class="today-date" id="todayDate"></p>
 			<p class="today-order" id="todayOrder"></p>
@@ -65,7 +82,36 @@
 
 			<div class="task-list" id="taskList"></div>
 		</section>
+
+		<section class="discussion-panel" id="discussionSection" aria-labelledby="discussionHeading">
+			<h2 id="discussionHeading">Discussion</h2>
+			<p class="discussion-note">Class discussion area can be connected here.</p>
+		</section>
+
+		<section class="resources-panel" id="resourcesSection" aria-labelledby="resourcesHeading">
+			<h2 id="resourcesHeading">Resources</h2>
+			<p class="discussion-note">Shared study resources can be listed here.</p>
+		</section>
 	</main>
+
+	<nav class="bottom-nav" id="bottomNav" aria-label="Primary">
+		<a class="bottom-nav-link is-active" href="#homeSection" data-nav-target="homeSection">
+			<span class="bottom-nav-icon" aria-hidden="true">🏠</span>
+			<span>Home</span>
+		</a>
+		<a class="bottom-nav-link" href="#tasksPanel" data-nav-target="tasksPanel">
+			<span class="bottom-nav-icon" aria-hidden="true">✅</span>
+			<span>Tasks</span>
+		</a>
+		<a class="bottom-nav-link" href="#discussionSection" data-nav-target="discussionSection">
+			<span class="bottom-nav-icon" aria-hidden="true">💬</span>
+			<span>Discussion</span>
+		</a>
+		<a class="bottom-nav-link" href="profile.html">
+			<span class="bottom-nav-icon" aria-hidden="true">👤</span>
+			<span>Profile</span>
+		</a>
+	</nav>
 
 	<script src="../js/script.js"></script>
 </body>

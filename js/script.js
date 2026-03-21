@@ -1015,3 +1015,46 @@
 		return nextWorking || null;
 	}
 })();
+
+(function initDashboardNavigation() {
+	const isDashboardPage = document.body && document.body.classList.contains("dashboard-page");
+	if (!isDashboardPage) {
+		return;
+	}
+
+	const quickLinks = Array.from(document.querySelectorAll(".quick-action[data-nav-target]"));
+	const bottomLinks = Array.from(document.querySelectorAll(".bottom-nav-link[data-nav-target]"));
+	const navigableLinks = quickLinks.concat(bottomLinks);
+
+	if (navigableLinks.length === 0) {
+		return;
+	}
+
+	navigableLinks.forEach(function bindLink(link) {
+		link.addEventListener("click", function activateLink() {
+			const target = link.getAttribute("data-nav-target");
+			setActiveState(target);
+		});
+	});
+
+	const initialTarget =
+		(window.location.hash && window.location.hash.replace("#", "")) ||
+		"homeSection";
+	setActiveState(initialTarget);
+
+	function setActiveState(targetId) {
+		quickLinks.forEach(function resetQuick(link) {
+			link.classList.remove("is-active");
+			if (link.getAttribute("data-nav-target") === targetId) {
+				link.classList.add("is-active");
+			}
+		});
+
+		bottomLinks.forEach(function resetBottom(link) {
+			link.classList.remove("is-active");
+			if (link.getAttribute("data-nav-target") === targetId) {
+				link.classList.add("is-active");
+			}
+		});
+	}
+})();
