@@ -407,7 +407,9 @@ body.dashboard-page {
 }
 
 .dashboard-page .app-layout {
-	width: min(1320px, 100%);
+	width: 100%;
+	max-width: 1320px;
+	min-width: 0;
 	margin: 0 auto;
 }
 
@@ -602,6 +604,7 @@ body.dashboard-page {
 .dashboard-page .today-panel,
 .dashboard-page .next-days-panel,
 .dashboard-page .timetable-panel,
+.dashboard-page .announcements-panel,
 .dashboard-page .tasks-panel,
 .dashboard-page .holiday-message {
 	border: 1px solid rgba(255, 255, 255, 0.16);
@@ -635,6 +638,91 @@ body.dashboard-page {
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	min-width: 0;
+}
+
+.dashboard-page .notification-button {
+	width: 42px;
+	height: 42px;
+	display: inline-grid;
+	place-items: center;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.26);
+	background: rgba(93, 183, 255, 0.16);
+	color: #dff1ff;
+	font-size: 1.05rem;
+	cursor: pointer;
+	transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.dashboard-page .notification-button:hover {
+	transform: translateY(-1px);
+	background: rgba(93, 183, 255, 0.24);
+	border-color: rgba(255, 216, 90, 0.5);
+}
+
+.dashboard-page .notification-button[aria-expanded="true"] {
+	background: rgba(255, 216, 90, 0.22);
+	border-color: rgba(255, 216, 90, 0.7);
+	color: #ffeaa2;
+}
+
+.dashboard-page .notification-board {
+	position: fixed;
+	inset: 0;
+	margin: auto;
+	width: min(900px, calc(100vw - 24px));
+	height: min(72vh, 560px);
+	max-height: 78vh;
+	overflow: auto;
+	border-radius: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: rgba(9, 24, 55, 0.94);
+	box-shadow: 0 18px 34px rgba(5, 17, 38, 0.46);
+	padding: 16px;
+	z-index: 9999;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+}
+
+.dashboard-page .notification-board[hidden] {
+	display: none;
+}
+
+.dashboard-page .notification-board-head {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 10px;
+	margin-bottom: 8px;
+}
+
+.dashboard-page .notification-board-head h2 {
+	margin: 0;
+	font-size: 0.95rem;
+	letter-spacing: 0.01em;
+}
+
+.dashboard-page .notification-close {
+	order: -1;
+	border: 0;
+	background: rgba(255, 255, 255, 0.1);
+	color: #e6f0ff;
+	width: 26px;
+	height: 26px;
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 0.85rem;
+}
+
+.dashboard-page .notification-list {
+	margin: 0;
+	padding-left: 18px;
+	display: grid;
+	gap: 7px;
+	color: #c8daef;
+	font-size: 0.84rem;
+	line-height: 1.45;
 }
 
 .dashboard-page .profile-avatar-link {
@@ -733,6 +821,7 @@ body.dashboard-page {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	min-width: 0;
 }
 
 .dashboard-page .quick-actions {
@@ -804,6 +893,32 @@ body.dashboard-page {
 	font-size: clamp(1.1rem, 2.2vw, 1.45rem);
 	font-weight: 600;
 	color: #ffeaa2;
+}
+
+.dashboard-page .today-order-row {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.dashboard-page .semester-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 9px;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 216, 90, 0.5);
+	background: rgba(255, 216, 90, 0.16);
+	color: #ffeaa2;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.dashboard-page .today-order.is-holiday + .semester-badge {
+	opacity: 0.6;
 }
 
 .dashboard-page .today-order.is-holiday {
@@ -940,6 +1055,46 @@ body.dashboard-page {
 	padding: clamp(16px, 2.2vw, 24px);
 }
 
+.dashboard-page .announcements-panel {
+	grid-column: 1 / -1;
+}
+
+.dashboard-page .announcements-panel h2 {
+	margin: 0;
+	font-size: 1.04rem;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+
+.dashboard-page .announcement-list {
+	margin: 0;
+	padding-left: 18px;
+	display: grid;
+	gap: 8px;
+	color: #c8daef;
+	font-size: 0.9rem;
+	line-height: 1.5;
+}
+
+.dashboard-page .announcements-panel.is-highlight {
+	animation: announcePulse 900ms ease;
+}
+
+@keyframes announcePulse {
+	0% {
+		box-shadow:
+			0 0 0 0 rgba(255, 216, 90, 0.45),
+			0 12px 30px rgba(0, 0, 0, 0.28),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+	100% {
+		box-shadow:
+			0 0 0 12px rgba(255, 216, 90, 0),
+			0 12px 30px rgba(0, 0, 0, 0.28),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+}
+
 .dashboard-page .discussion-panel h2,
 .dashboard-page .resources-panel h2 {
 	margin: 0;
@@ -964,11 +1119,11 @@ body.dashboard-page {
 	background: rgba(9, 24, 55, 0.9);
 	backdrop-filter: blur(14px);
 	-webkit-backdrop-filter: blur(14px);
-	border-radius: 16px;
-	padding: 8px;
+	border-radius: 18px;
+	padding: 10px;
 	display: grid;
 	grid-template-columns: repeat(5, minmax(0, 1fr));
-	gap: 6px;
+	gap: 8px;
 	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.36);
 }
 
@@ -977,13 +1132,14 @@ body.dashboard-page {
 	border: 0;
 	background: transparent;
 	color: #b9cce5;
-	padding: 7px 4px;
+	padding: 8px 4px;
 	border-radius: 12px;
-	font-size: 0.72rem;
+	font-size: 0.8rem;
 	font-weight: 600;
 	display: grid;
 	place-items: center;
-	gap: 3px;
+	gap: 4px;
+	min-height: 56px;
 	transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
@@ -998,7 +1154,7 @@ body.dashboard-page {
 }
 
 .dashboard-page .bottom-nav-icon {
-	font-size: 1rem;
+	font-size: 1.2rem;
 	line-height: 1;
 }
 
@@ -1034,6 +1190,12 @@ body.dashboard-page {
 	font: inherit;
 	outline: none;
 	transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.dashboard-page .task-form input[type="text"]::placeholder,
+.dashboard-page .task-form input[type="date"]::placeholder {
+	color: #89a4c3;
+	opacity: 1;
 }
 
 .dashboard-page .task-form input[type="text"]:focus,
@@ -1458,6 +1620,7 @@ body.profile-page {
 	.dashboard-page .dashboard-header,
 	.dashboard-page .status-banner,
 	.dashboard-page .timetable-panel,
+	.dashboard-page .announcements-panel,
 	.dashboard-page .tasks-panel,
 	.dashboard-page .holiday-message {
 		grid-column: 1 / -1;
@@ -1478,6 +1641,7 @@ body.profile-page {
 	}
 
 	.dashboard-page .dashboard-header {
+		position: relative;
 		flex-direction: column;
 		align-items: flex-start;
 	}
@@ -1485,10 +1649,21 @@ body.profile-page {
 	.dashboard-page .topbar-right {
 		width: 100%;
 		justify-content: space-between;
+		gap: 8px;
+		min-width: 0;
+	}
+
+	.dashboard-page .notification-board {
+		inset: 0;
+		margin: auto;
+		width: calc(100vw - 14px);
+		height: min(78vh, 620px);
+		max-height: 82vh;
 	}
 
 	.dashboard-page .dashboard-user {
-		max-width: calc(100% - 56px);
+		flex: 1;
+		max-width: none;
 	}
 
 	.dashboard-page .period-grid {
@@ -1529,15 +1704,16 @@ body.profile-page {
 	}
 
 	.dashboard-page .bottom-nav {
-		left: 6px;
-		right: 6px;
-		padding: 6px;
-		gap: 4px;
+		left: 4px;
+		right: 4px;
+		padding: 8px;
+		gap: 6px;
 	}
 
 	.dashboard-page .bottom-nav-link {
-		padding: 6px 2px;
-		font-size: 0.68rem;
+		padding: 7px 2px;
+		font-size: 0.76rem;
+		min-height: 54px;
 	}
 }
 
@@ -1587,11 +1763,8 @@ body.profile-page {
 }
 
 .dashboard-page.theme-light {
-	color: #0b2a4a;
-	background:
-		radial-gradient(960px 480px at 8% -12%, rgba(11, 42, 74, 0.58), transparent 62%),
-		radial-gradient(820px 430px at 100% 104%, rgba(247, 201, 72, 0.26), transparent 70%),
-		linear-gradient(165deg, #4c78a1, #5f8bb1 52%, #749dc0);
+	color: #041a2f;
+	background: linear-gradient(165deg, #4e628c, #61749b 50%, #7586aa);
 }
 
 .dashboard-page.theme-light .app-sidebar,
@@ -1600,30 +1773,65 @@ body.profile-page {
 .dashboard-page.theme-light .today-panel,
 .dashboard-page.theme-light .next-days-panel,
 .dashboard-page.theme-light .timetable-panel,
+.dashboard-page.theme-light .announcements-panel,
 .dashboard-page.theme-light .tasks-panel,
 .dashboard-page.theme-light .discussion-panel,
 .dashboard-page.theme-light .resources-panel,
 .dashboard-page.theme-light .profile-spa-panel,
 .dashboard-page.theme-light .holiday-message {
-	background: linear-gradient(160deg, rgba(101, 147, 188, 0.95), rgba(123, 165, 202, 0.93));
-	border-color: rgba(11, 42, 74, 0.52);
+	background: linear-gradient(160deg, #556994, #6a7ca5);
+	border-color: #2c3e67;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
 }
 
 .dashboard-page.theme-light .dashboard-header {
-	border-top: 4px solid #f7c948;
+	border-top: 4px solid #ffd54a;
 	box-shadow:
-		0 12px 24px rgba(11, 42, 74, 0.18),
-		inset 0 1px 0 rgba(255, 255, 255, 0.4);
+		0 12px 24px rgba(8, 30, 55, 0.32),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .dashboard-page.theme-light .app-sidebar {
-	background: linear-gradient(180deg, rgba(112, 156, 196, 0.97), rgba(95, 141, 183, 0.95));
+	background: linear-gradient(180deg, #4f638d, #44577f);
 }
 
 .dashboard-page.theme-light .status-banner {
-	border-color: rgba(11, 42, 74, 0.34);
-	background: linear-gradient(135deg, rgba(11, 42, 74, 0.28), rgba(247, 201, 72, 0.48));
-	color: #07213a;
+	border-color: #2c3e67;
+	background: linear-gradient(135deg, #2c3e67, #ffd54a);
+	color: #f4f8ff;
+}
+
+.dashboard-page.theme-light .notification-button {
+	background: #3f5079;
+	border-color: #7f8fb2;
+	color: #eef4ff;
+}
+
+.dashboard-page.theme-light .notification-button[aria-expanded="true"] {
+	background: #ffd54a;
+	border-color: #f7c948;
+	color: #2c3e67;
+}
+
+.dashboard-page.theme-light .notification-board {
+	background: #32456f;
+	border-color: #5f7198;
+}
+
+.dashboard-page.theme-light .notification-list {
+	color: #eff5ff;
+}
+
+.dashboard-page.theme-light .notification-close {
+	background: #4a5f8d;
+	color: #f2f7ff;
+}
+
+.dashboard-page.theme-light .semester-badge {
+	background: #ffd54a;
+	border-color: #f7c948;
+	color: #2c3e67;
 }
 
 .dashboard-page.theme-light .dashboard-header h1,
@@ -1631,6 +1839,7 @@ body.profile-page {
 .dashboard-page.theme-light .today-panel h2,
 .dashboard-page.theme-light .next-days-panel h2,
 .dashboard-page.theme-light .timetable-panel h2,
+.dashboard-page.theme-light .announcements-panel h2,
 .dashboard-page.theme-light .tasks-panel h2,
 .dashboard-page.theme-light .discussion-panel h2,
 .dashboard-page.theme-light .resources-panel h2,
@@ -1638,7 +1847,39 @@ body.profile-page {
 .dashboard-page.theme-light .task-title,
 .dashboard-page.theme-light .period-subject,
 .dashboard-page.theme-light .profile-value {
-	color: #07213a;
+	color: #ffd54a;
+	text-shadow: 0 1px 0 rgba(11, 42, 74, 0.22);
+}
+
+.dashboard-page.theme-light .dashboard-header h1 {
+	color: #ffd54a;
+	text-shadow: 0 1px 0 rgba(44, 62, 103, 0.3);
+}
+
+.dashboard-page.theme-light .profile-value {
+	font-weight: 800;
+	letter-spacing: 0.01em;
+}
+
+.dashboard-page.theme-light #profileName,
+.dashboard-page.theme-light #profileEmail,
+.dashboard-page.theme-light #profileRole,
+.dashboard-page.theme-light #completedTasksCount {
+	font-weight: 800;
+}
+
+.dashboard-page.theme-light .profile-spa-panel .profile-label {
+	color: #ffd54a;
+	font-weight: 700;
+}
+
+.dashboard-page.theme-light .profile-spa-panel .profile-value,
+.dashboard-page.theme-light #profileName,
+.dashboard-page.theme-light #profileEmail,
+.dashboard-page.theme-light #profileRole,
+.dashboard-page.theme-light #completedTasksCount {
+	color: #ffffff;
+	font-weight: 800;
 }
 
 .dashboard-page.theme-light .dashboard-kicker,
@@ -1649,6 +1890,7 @@ body.profile-page {
 .dashboard-page.theme-light .discussion-note,
 .dashboard-page.theme-light .task-meta,
 .dashboard-page.theme-light .task-empty,
+	.dashboard-page.theme-light .announcement-list,
 	.dashboard-page.theme-light .task-checkbox-wrap,
 	.dashboard-page.theme-light .today-date,
 	.dashboard-page.theme-light .today-subtext,
@@ -1656,33 +1898,33 @@ body.profile-page {
 	.dashboard-page.theme-light .profile-label,
 	.dashboard-page.theme-light .dashboard-user,
 	.dashboard-page.theme-light .bottom-nav-link {
-	color: #123e66;
+	color: #e2ecff;
 }
 
 .dashboard-page.theme-light .today-order,
 .dashboard-page.theme-light .next-day-order,
 .dashboard-page.theme-light .bottom-nav-link.is-active {
-	color: #6e4d00;
+	color: #ffd54a;
 }
 
 .dashboard-page.theme-light .dashboard-user {
-	background: rgba(11, 42, 74, 0.12);
-	border-color: rgba(11, 42, 74, 0.34);
+	background: #6c7fa8;
+	border-color: #2c3e67;
 }
 
 .dashboard-page.theme-light .spa-nav-link {
-	color: #0f3356;
+	color: #edf4ff;
 }
 
 .dashboard-page.theme-light .spa-nav-link:hover {
-	background: rgba(11, 42, 74, 0.14);
-	border-color: rgba(11, 42, 74, 0.3);
+	background: #5f739e;
+	border-color: #2c3e67;
 }
 
 .dashboard-page.theme-light .spa-nav-link.is-active {
-	background: linear-gradient(135deg, rgba(247, 201, 72, 0.44), rgba(247, 201, 72, 0.24));
-	border-color: rgba(247, 201, 72, 0.9);
-	color: #07213a;
+	background: linear-gradient(135deg, #ffd54a, #ffde72);
+	border-color: #f7c948;
+	color: #2c3e67;
 }
 
 .dashboard-page.theme-light .period-card,
@@ -1692,56 +1934,69 @@ body.profile-page {
 .dashboard-page.theme-light .task-form input[type="text"],
 .dashboard-page.theme-light .task-form input[type="date"],
 .dashboard-page.theme-light .profile-toggle-row {
-	background: linear-gradient(160deg, rgba(119, 161, 199, 0.96), rgba(142, 178, 211, 0.94));
-	border-color: rgba(11, 42, 74, 0.5);
-	color: #07213a;
+	background: linear-gradient(160deg, #60739d, #7486ad);
+	border-color: #2c3e67;
+	color: #000000;
+}
+
+.dashboard-page.theme-light .task-form input[type="text"]::placeholder,
+.dashboard-page.theme-light .task-form input[type="date"]::placeholder {
+	color: #d7e6ff;
+	opacity: 1;
 }
 
 .dashboard-page.theme-light .quick-action,
 .dashboard-page.theme-light .next-day-card,
 .dashboard-page.theme-light .task-card,
 .dashboard-page.theme-light .period-card {
-	box-shadow: 0 10px 20px rgba(12, 46, 82, 0.16);
+	box-shadow: 0 10px 20px rgba(8, 30, 55, 0.22);
 }
 
 .dashboard-page.theme-light .today-panel,
 .dashboard-page.theme-light .next-days-panel,
 .dashboard-page.theme-light .timetable-panel,
+.dashboard-page.theme-light .announcements-panel,
 .dashboard-page.theme-light .tasks-panel,
 .dashboard-page.theme-light .dashboard-header,
 .dashboard-page.theme-light .status-banner {
 	box-shadow:
-		0 12px 24px rgba(12, 46, 82, 0.18),
-		inset 0 1px 0 rgba(255, 255, 255, 0.34);
+		0 12px 24px rgba(8, 30, 55, 0.28),
+		inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .dashboard-page.theme-light .bottom-nav {
-	background: rgba(11, 42, 74, 0.92);
-	border-color: rgba(247, 201, 72, 0.35);
+	background: #2c3e67;
+	border-color: #ffd54a;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
 }
 
 .dashboard-page.theme-light .bottom-nav-link {
-	color: rgba(255, 255, 255, 0.92);
+	color: #e8f3ff;
 }
 
 .dashboard-page.theme-light .quick-action.is-active,
 .dashboard-page.theme-light .bottom-nav-link.is-active,
-.dashboard-page.theme-light .next-day-card.is-today,
+.dashboard-page.theme-light .next-day-card.is-today {
+	border-color: #ffd54a;
+	box-shadow: 0 0 0 2px #f7c948;
+}
+
 .dashboard-page.theme-light .next-day-card.is-selected {
-	border-color: rgba(247, 201, 72, 0.9);
-	box-shadow: 0 0 0 2px rgba(247, 201, 72, 0.28);
+	border-color: #7fc3ff;
+	box-shadow: 0 0 0 2px rgba(93, 183, 255, 0.55);
 }
 
 .dashboard-page.theme-light .quick-action,
 .dashboard-page.theme-light .next-day-tag,
 .dashboard-page.theme-light .task-status,
 .dashboard-page.theme-light .task-action-button {
-	color: #0f365c;
+	color: #eef4ff;
 }
 
 .dashboard-page.theme-light .next-day-tag.is-today,
 .dashboard-page.theme-light .next-day-tag.is-tomorrow {
-	color: #6e4d00;
+	color: #9f6c00;
 }
 
 .dashboard-page.theme-light .profile-logout-btn {

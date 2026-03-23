@@ -28,11 +28,25 @@
 					<h1>Classroom Dashboard</h1>
 				</div>
 				<div class="topbar-right">
+					<button class="notification-button" id="notificationBtn" type="button" aria-label="Open announcements" aria-expanded="false" aria-controls="notificationBoard">
+						<span class="notification-icon" aria-hidden="true">🔔</span>
+					</button>
 					<button class="profile-avatar-link spa-nav-link" data-page="profilePage" type="button" aria-label="Open profile">
 						<span class="profile-avatar" aria-hidden="true">P</span>
 					</button>
 					<p class="dashboard-user" id="dashboardUser">Welcome</p>
 				</div>
+				<aside class="notification-board" id="notificationBoard" hidden aria-label="Announcement board">
+					<div class="notification-board-head">
+						<h2>Announcements</h2>
+						<button class="notification-close" id="notificationClose" type="button" aria-label="Close announcements">✕</button>
+					</div>
+					<ul class="notification-list">
+						<li>Semester 4 classes run in the regular 6-day cycle.</li>
+						<li>Task submissions are checked daily at 6:00 PM.</li>
+						<li>Discussion updates appear here when teachers post notices.</li>
+					</ul>
+				</aside>
 			</header>
 
 			<section class="spa-page" id="homePage">
@@ -57,7 +71,10 @@
 					<section class="today-panel" aria-labelledby="todayHeading" id="todaySection">
 						<h2 id="todayHeading">Today</h2>
 						<p class="today-date" id="todayDate"></p>
-						<p class="today-order" id="todayOrder"></p>
+						<div class="today-order-row">
+							<p class="today-order" id="todayOrder"></p>
+							<span class="semester-badge" id="semesterBadge">SEM 4</span>
+						</div>
 						<p class="today-subtext" id="todaySubtext"></p>
 					</section>
 
@@ -78,6 +95,17 @@
 				</section>
 
 				<p class="holiday-message" id="holidayMessage" hidden>No classes today</p>
+
+				<section class="announcements-panel" id="announcementsPanel" tabindex="-1" aria-labelledby="announcementsHeading">
+					<div class="section-head">
+						<h2 id="announcementsHeading">Announcements</h2>
+					</div>
+					<ul class="announcement-list">
+						<li>Semester 4 classes run in the regular 6-day cycle.</li>
+						<li>Task submissions are checked daily at 6:00 PM.</li>
+						<li>Discussion updates appear here when teachers post notices.</li>
+					</ul>
+				</section>
 
 				<section class="tasks-panel home-tasks-summary" aria-labelledby="homeTaskSummaryHeading">
 					<div class="section-head">

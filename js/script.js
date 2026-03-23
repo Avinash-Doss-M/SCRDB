@@ -327,6 +327,10 @@
 	const logoutBtn = document.getElementById("logoutBtn");
 	const profileMessage = document.getElementById("profileMessage");
 	const themeToggle = document.getElementById("themeToggle");
+	const notificationBtn = document.getElementById("notificationBtn");
+	const notificationBoard = document.getElementById("notificationBoard");
+	const notificationClose = document.getElementById("notificationClose");
+	const announcementsPanel = document.getElementById("announcementsPanel");
 
 	if (
 		!todayDateEl ||
@@ -414,6 +418,7 @@
 
 	configureTaskPermissions();
 	setupProfileSection();
+	setupNotificationBoard();
 	taskForm.addEventListener("submit", addTask);
 	taskList.addEventListener("click", handleTaskListClick);
 	taskList.addEventListener("change", handleTaskProofChange);
@@ -718,6 +723,52 @@
 		});
 
 		logoutBtn.addEventListener("click", handleDashboardLogout);
+	}
+
+	function setupNotificationBoard() {
+		if (!notificationBtn) {
+			return;
+		}
+
+		notificationBtn.addEventListener("click", function jumpToAnnouncements(event) {
+			event.stopPropagation();
+
+			if (typeof window.showPage === "function") {
+				window.showPage("homePage");
+			}
+			if (typeof window.setActiveNav === "function") {
+				window.setActiveNav("homePage");
+			}
+
+			if (notificationBoard) {
+				notificationBoard.setAttribute("hidden", "");
+			}
+			notificationBtn.setAttribute("aria-expanded", "false");
+
+			if (!announcementsPanel) {
+				return;
+			}
+
+			announcementsPanel.scrollIntoView({
+				behavior: "smooth",
+				block: "center"
+			});
+			announcementsPanel.focus({ preventScroll: true });
+
+			announcementsPanel.classList.remove("is-highlight");
+			void announcementsPanel.offsetWidth;
+			announcementsPanel.classList.add("is-highlight");
+			window.setTimeout(function clearHighlight() {
+				announcementsPanel.classList.remove("is-highlight");
+			}, 1000);
+		});
+
+		if (notificationClose && notificationBoard) {
+			notificationClose.addEventListener("click", function closeNotifications() {
+			notificationBoard.setAttribute("hidden", "");
+			notificationBtn.setAttribute("aria-expanded", "false");
+			});
+		}
 	}
 
 	function renderProfileCard() {
