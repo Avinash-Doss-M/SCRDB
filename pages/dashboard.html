@@ -123,19 +123,79 @@
 					</div>
 					<p class="task-summary" id="taskSummary"></p>
 
-					<form class="task-form" id="taskForm">
-						<input id="taskTitle" name="taskTitle" type="text" placeholder="Task title" maxlength="80" required />
-						<input id="taskSubject" name="taskSubject" type="text" placeholder="Subject" maxlength="30" required />
-						<input id="taskDeadline" name="taskDeadline" type="date" required />
-						<label class="task-checkbox-wrap" for="taskProof">
-							<input id="taskProof" name="taskProof" type="checkbox" />
-							<span>Requires proof</span>
-						</label>
-						<button type="submit" id="taskAddButton">Add Task</button>
+					<form class="task-form task-form-launcher" id="taskForm">
+						<button type="button" id="taskAddButton">Add Task</button>
+						<p class="task-launch-note">Assign tasks to selected students from 24H301 to 24H350.</p>
 					</form>
 
 					<div class="task-list" id="taskList"></div>
 				</section>
+
+				<div class="task-modal-overlay" id="taskAssignModal" hidden>
+					<div class="task-modal" role="dialog" aria-modal="true" aria-labelledby="taskModalHeading">
+						<div class="task-modal-head">
+							<h3 id="taskModalHeading">Assign Task</h3>
+							<button type="button" id="taskModalClose" class="modal-close-btn" aria-label="Close assign task modal">✕</button>
+						</div>
+						<form id="taskAssignForm" class="task-assign-form">
+							<input id="assignTaskTitle" name="assignTaskTitle" type="text" placeholder="Task title" maxlength="80" required />
+							<input id="assignTaskSubject" name="assignTaskSubject" type="text" placeholder="Subject" maxlength="30" required />
+							<input id="assignTaskDeadline" name="assignTaskDeadline" type="date" required />
+							<label class="task-checkbox-wrap" for="assignTaskProof">
+								<input id="assignTaskProof" name="assignTaskProof" type="checkbox" />
+								<span>Requires Proof</span>
+							</label>
+
+							<div class="student-select-tools">
+								<input id="studentSearch" type="text" placeholder="Search roll number" aria-label="Search students" />
+								<label class="task-checkbox-wrap" for="selectAllStudents">
+									<input id="selectAllStudents" type="checkbox" />
+									<span>Select All</span>
+								</label>
+							</div>
+
+							<div class="student-list" id="studentList" aria-label="Student selection list"></div>
+							<div class="task-assign-actions">
+								<button type="submit" id="assignTaskSubmit">Assign Task</button>
+							</div>
+						</form>
+					</div>
+				</div>
+
+				<div class="task-modal-overlay" id="taskStatusModal" hidden>
+					<div class="task-modal task-status-modal" role="dialog" aria-modal="true" aria-labelledby="taskStatusHeading">
+						<div class="task-modal-head">
+							<h3 id="taskStatusHeading">Task Status Board</h3>
+							<button type="button" id="taskStatusClose" class="modal-close-btn" aria-label="Close status board">✕</button>
+						</div>
+						<div class="task-status-toolbar">
+							<button type="button" id="markAllCompleteBtn">Mark All Complete</button>
+						</div>
+						<div class="status-table-wrap">
+							<table class="status-table">
+								<thead>
+									<tr>
+										<th>Roll Number</th>
+										<th>Status</th>
+										<th>Proof</th>
+										<th>Admin Control</th>
+									</tr>
+								</thead>
+								<tbody id="taskStatusTableBody"></tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				<div class="task-modal-overlay" id="proofPreviewModal" hidden>
+					<div class="task-modal proof-modal" role="dialog" aria-modal="true" aria-labelledby="proofPreviewHeading">
+						<div class="task-modal-head">
+							<h3 id="proofPreviewHeading">Proof Preview</h3>
+							<button type="button" id="proofPreviewClose" class="modal-close-btn" aria-label="Close proof preview">✕</button>
+						</div>
+						<div class="proof-preview-content" id="proofPreviewContent"></div>
+					</div>
+				</div>
 			</section>
 
 			<section class="spa-page hidden" id="discussionPage">

@@ -312,11 +312,24 @@
 	const dashboardUser = document.getElementById("dashboardUser");
 	const taskList = document.getElementById("taskList");
 	const taskForm = document.getElementById("taskForm");
-	const taskTitleInput = document.getElementById("taskTitle");
-	const taskSubjectInput = document.getElementById("taskSubject");
-	const taskDeadlineInput = document.getElementById("taskDeadline");
-	const taskProofInput = document.getElementById("taskProof");
 	const taskAddButton = document.getElementById("taskAddButton");
+	const taskAssignModal = document.getElementById("taskAssignModal");
+	const taskModalClose = document.getElementById("taskModalClose");
+	const taskAssignForm = document.getElementById("taskAssignForm");
+	const assignTaskTitleInput = document.getElementById("assignTaskTitle");
+	const assignTaskSubjectInput = document.getElementById("assignTaskSubject");
+	const assignTaskDeadlineInput = document.getElementById("assignTaskDeadline");
+	const assignTaskProofInput = document.getElementById("assignTaskProof");
+	const studentSearchInput = document.getElementById("studentSearch");
+	const selectAllStudentsInput = document.getElementById("selectAllStudents");
+	const studentList = document.getElementById("studentList");
+	const taskStatusModal = document.getElementById("taskStatusModal");
+	const taskStatusClose = document.getElementById("taskStatusClose");
+	const markAllCompleteBtn = document.getElementById("markAllCompleteBtn");
+	const taskStatusTableBody = document.getElementById("taskStatusTableBody");
+	const proofPreviewModal = document.getElementById("proofPreviewModal");
+	const proofPreviewClose = document.getElementById("proofPreviewClose");
+	const proofPreviewContent = document.getElementById("proofPreviewContent");
 	const tasksRoleNote = document.getElementById("tasksRoleNote");
 	const taskSummary = document.getElementById("taskSummary");
 	const homeTaskSummary = document.getElementById("homeTaskSummary");
@@ -345,10 +358,6 @@
 		!dashboardUser ||
 		!taskList ||
 		!taskForm ||
-		!taskTitleInput ||
-		!taskSubjectInput ||
-		!taskDeadlineInput ||
-		!taskProofInput ||
 		!taskAddButton ||
 		!tasksRoleNote ||
 		!taskSummary ||
@@ -410,22 +419,45 @@
 	];
 
 	const TASKS_STORAGE_KEY = "classroomTasks";
-	const currentRole = localStorage.getItem("role") || "student";
+	const SUPABASE_URL = "https://zusvmyxaqidypumehfsr.supabase.co";
+	const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1c3ZteXhhcWlkeXB1bWVoZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODk1MjksImV4cCI6MjA4OTY2NTUyOX0.j2cgjwqn0Y5edp0MrYcfcXOQwBIr9bebz_KGv70KYdo";
+	const TASK_PROOF_BUCKET = "task-proofs";
+	const ALLOWED_PROOF_TYPES = ["image/png", "image/jpeg", "application/pdf"];
+	const ASSIGNMENT_ROLL_FIELDS = ["assigned_student_roll", "roll_number", "student_roll", "roll"];
+	const HYBRID_STUDENT_ROLLS = ["24H310", "24H319"];
+	const supabaseClient = window.supabase && typeof window.supabase.createClient === "function"
+		? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+		: null;
+	const currentRole = String(localStorage.getItem("role") || "student").trim().toLowerCase();
+	const currentRoleKey = currentRole.replace(/\s+/g, "_");
 	const userEmail = localStorage.getItem("userEmail") || "Guest";
 	const userName = localStorage.getItem("userName") || userEmail.split("@")[0];
-	let tasks = loadTasks();
+	const studentRolls = buildStudentRolls();
+	const currentStudentRoll = resolveStudentRoll(userEmail);
+	let tasks = [];
 	let selectedDateIso = formatISODate(new Date());
+	let activeStatusTaskId = null;
+	let currentAuthUserId = null;
+	let activeAssignmentRollField = null;
 
 	configureTaskPermissions();
 	setupProfileSection();
 	setupNotificationBoard();
-	taskForm.addEventListener("submit", addTask);
+	setupTaskAssignmentModal();
+	setupTaskStatusModal();
 	taskList.addEventListener("click", handleTaskListClick);
 	taskList.addEventListener("change", handleTaskProofChange);
 	nextDaysSlider.addEventListener("click", handleNextDaySelection);
+	void initializeTaskSystem();
 
 	renderDashboard();
 	window.setInterval(renderDashboard, 30000);
+	window.setInterval(function refreshTasksBackground() {
+		if (!supabaseClient) {
+			return;
+		}
+		void refreshTasksFromSupabase();
+	}, 45000);
 
 	function getTodayData() {
 		const todayIso = formatISODate(new Date());
@@ -675,34 +707,181 @@
 		return false;
 	}
 
+	async function initializeTaskSystem() {
+		tasks = loadTasks(!supabaseClient);
+		renderTasks();
+
+		if (!supabaseClient) {
+			return;
+		}
+
+		try {
+			const authResult = await supabaseClient.auth.getUser();
+			if (authResult.data && authResult.data.user) {
+				currentAuthUserId = authResult.data.user.id;
+			}
+
+			await supabaseClient
+				.from("users")
+				.upsert([{ email: userEmail, name: userName, role: currentRole }], { onConflict: "email" });
+		} catch (error) {
+			console.warn("User sync skipped:", error);
+		}
+
+		await refreshTasksFromSupabase();
+	}
+
+	async function refreshTasksFromSupabase() {
+		if (!supabaseClient) {
+			return;
+		}
+
+		try {
+			const taskQuery = supabaseClient
+				.from("tasks")
+				.select("*")
+				.order("deadline", { ascending: true });
+
+			const assignmentQuery = supabaseClient.from("task_assignments").select("*");
+
+			const [taskResult, assignmentResult] = await Promise.all([taskQuery, assignmentQuery]);
+
+			if (taskResult.error) {
+				throw taskResult.error;
+			}
+			if (assignmentResult.error) {
+				throw assignmentResult.error;
+			}
+
+			const assignmentRows = (assignmentResult.data || []).filter(function filterRowsByRole(row) {
+				if (canAddTasks()) {
+					return true;
+				}
+
+				const rowRoll = getAssignmentRollFromRow(row);
+				return Boolean(currentStudentRoll) && rowRoll === String(currentStudentRoll).toUpperCase();
+			});
+
+			const assignmentsByTaskId = assignmentRows.reduce(function groupAssignments(accumulator, row) {
+				const taskId = Number(readField(row, ["task_id", "taskId", "task"], 0));
+				if (!taskId) {
+					return accumulator;
+				}
+
+				if (!accumulator[taskId]) {
+					accumulator[taskId] = [];
+				}
+
+				const rollField = getExistingFieldName(row, ASSIGNMENT_ROLL_FIELDS);
+				if (rollField) {
+					activeAssignmentRollField = rollField;
+				}
+
+				accumulator[taskId].push({
+					rollNumber: getAssignmentRollFromRow(row),
+					status: normalizeAssignmentStatus(readField(row, ["status"], "pending")),
+					proofName: readField(row, ["proof_name", "proof_filename", "proof_file_name"], null),
+					proofPath: readField(row, ["proof_url", "proof_path"], null),
+					proofDataUrl: null
+				});
+				return accumulator;
+			}, {});
+
+			tasks = (taskResult.data || []).map(function mapTaskRow(row) {
+				const taskId = Number(readField(row, ["id", "task_id"], getNextTaskId()));
+				return normalizeTask({
+					id: taskId,
+					title: readField(row, ["title", "task_title"], "Untitled Task"),
+					subject: readField(row, ["subject"], "GENERAL"),
+					deadline: String(readField(row, ["deadline", "due_date"], formatISODate(new Date()))).slice(0, 10),
+					requiresProof: Boolean(readField(row, ["requires_proof", "requiresProof"], false)),
+					assignments: assignmentsByTaskId[taskId] || []
+				});
+			});
+
+			saveTasks();
+			renderTasks();
+		} catch (error) {
+			console.error("Task sync failed:", error);
+		}
+	}
+
+	function getAssignmentRollFromRow(row) {
+		return String(readField(row, ASSIGNMENT_ROLL_FIELDS, "")).toUpperCase();
+	}
+
+	function getExistingFieldName(source, keys) {
+		for (let i = 0; i < keys.length; i += 1) {
+			const key = keys[i];
+			if (source && Object.prototype.hasOwnProperty.call(source, key) && source[key] !== null && source[key] !== undefined) {
+				return key;
+			}
+		}
+		return null;
+	}
+
+	function readField(source, keys, fallbackValue) {
+		for (let i = 0; i < keys.length; i += 1) {
+			const key = keys[i];
+			if (source && Object.prototype.hasOwnProperty.call(source, key) && source[key] !== null && source[key] !== undefined) {
+				return source[key];
+			}
+		}
+		return fallbackValue;
+	}
+
+	function normalizeAssignmentStatus(statusValue) {
+		const normalized = String(statusValue || "pending").trim().toLowerCase();
+		if (["completed", "pending", "missed"].includes(normalized)) {
+			return normalized;
+		}
+		if (normalized === "approved" || normalized === "done") {
+			return "completed";
+		}
+		if (normalized === "rejected") {
+			return "pending";
+		}
+		return "pending";
+	}
+
 	function renderTasks() {
-		const summary = getTaskSummary();
+		tasks = tasks.map(normalizeTask);
+		updateMissedStatuses(tasks);
+
+		const visibleTasks = getVisibleTasks();
+		const summary = getTaskSummary(visibleTasks);
 		taskSummary.textContent = "Tasks: " + summary.pending + " Pending | " + summary.completed + " Completed | " + summary.missed + " Missed";
 		homeTaskSummary.textContent = taskSummary.textContent;
 		completedTasksCount.textContent = String(summary.completed);
 
-		if (tasks.length === 0) {
-			taskList.innerHTML = '<p class="task-empty">No tasks yet. Add a new task to get started.</p>';
+		if (visibleTasks.length === 0) {
+			taskList.innerHTML = canAddTasks()
+				? '<p class="task-empty">No tasks yet. Use Add Task to assign students.</p>'
+				: '<p class="task-empty">No tasks assigned to your roll number right now.</p>';
 			return;
 		}
 
-		taskList.innerHTML = tasks
+		taskList.innerHTML = visibleTasks
 			.slice()
 			.sort(function byDeadline(a, b) {
 				return a.deadline.localeCompare(b.deadline);
 			})
 			.map(function mapTask(task) {
-				const status = getTaskStatus(task);
+				const assignment = getAssignmentForRoll(task, currentStudentRoll);
+				const status = canAddTasks() ? getTaskLevelStatus(task) : getTaskStatus(task, assignment);
 				const statusClass = status.toLowerCase();
 				const missedClass = status === "Missed" ? "is-missed-task" : "";
-				const actions = buildTaskActions(task, status);
+				const actions = buildTaskActions(task, status, assignment);
+				const proofText = assignment && assignment.proofName ? '<p class="task-proof">Proof: ' + escapeHtml(assignment.proofName) + '</p>' : "";
+				const assignmentMeta = canAddTasks() ? buildAssignmentMeta(task) : "";
 
 				return [
 					'<article class="task-card ' + missedClass + '" data-task-id="' + task.id + '">',
 					'<div class="task-content">',
 					'<p class="task-title">' + escapeHtml(task.title) + "</p>",
 					'<p class="task-meta"><span>Subject: ' + escapeHtml(task.subject) + '</span><span>Deadline: ' + formatHumanDate(new Date(task.deadline + "T00:00:00")) + "</span></p>",
-					task.submittedFile ? '<p class="task-proof">Proof: ' + escapeHtml(task.submittedFile) + "</p>" : "",
+					assignmentMeta,
+					proofText,
 					actions,
 					"</div>",
 					'<p class="task-status is-' + statusClass + '">' + status + "</p>",
@@ -710,6 +889,1170 @@
 				].join("");
 			})
 			.join("");
+
+		saveTasks();
+	}
+
+	function setupTaskAssignmentModal() {
+		if (
+			!taskAssignModal ||
+			!taskModalClose ||
+			!taskAssignForm ||
+			!assignTaskTitleInput ||
+			!assignTaskSubjectInput ||
+			!assignTaskDeadlineInput ||
+			!assignTaskProofInput ||
+			!studentSearchInput ||
+			!selectAllStudentsInput ||
+			!studentList
+		) {
+			if (canAddTasks()) {
+				tasksRoleNote.textContent = currentRole + " access (task modal missing in current page build)";
+			}
+			return;
+		}
+
+		closeModal(taskAssignModal);
+		if (taskStatusModal) {
+			closeModal(taskStatusModal);
+		}
+		if (proofPreviewModal) {
+			closeModal(proofPreviewModal);
+		}
+		renderStudentList("");
+
+		taskAddButton.addEventListener("click", function openAssignModal() {
+			if (!canAddTasks()) {
+				window.alert("Only CR / class incharge / tech support can assign tasks.");
+				return;
+			}
+
+			openModal(taskAssignModal);
+			assignTaskTitleInput.focus();
+		});
+
+		taskForm.addEventListener("click", function openAssignFromForm(event) {
+			const trigger = event.target.closest("#taskAddButton");
+			if (!trigger || !canAddTasks()) {
+				return;
+			}
+			openModal(taskAssignModal);
+			assignTaskTitleInput.focus();
+		});
+
+		taskModalClose.addEventListener("click", function closeAssignModal() {
+			closeModal(taskAssignModal);
+		});
+
+		taskAssignModal.addEventListener("click", function closeByOverlay(event) {
+			if (event.target === taskAssignModal) {
+				closeModal(taskAssignModal);
+			}
+		});
+
+		taskAssignForm.addEventListener("submit", handleAssignTaskSubmit);
+
+		studentSearchInput.addEventListener("input", function handleStudentSearch() {
+			renderStudentList(studentSearchInput.value.trim());
+		});
+
+		selectAllStudentsInput.addEventListener("change", function toggleSelectAll() {
+			const visibleChecks = studentList.querySelectorAll(".student-select-item");
+			visibleChecks.forEach(function setChecked(checkbox) {
+				checkbox.checked = selectAllStudentsInput.checked;
+			});
+		});
+
+		document.addEventListener("keydown", function closeAssignOnEscape(event) {
+			if (event.key === "Escape") {
+				closeModal(taskAssignModal);
+			}
+		});
+	}
+
+	function setupTaskStatusModal() {
+		if (!taskStatusModal || !taskStatusClose || !markAllCompleteBtn || !taskStatusTableBody || !proofPreviewModal || !proofPreviewClose || !proofPreviewContent) {
+			return;
+		}
+
+		taskStatusClose.addEventListener("click", function closeStatus() {
+			closeModal(taskStatusModal);
+		});
+
+		taskStatusModal.addEventListener("click", function closeStatusByOverlay(event) {
+			if (event.target === taskStatusModal) {
+				closeModal(taskStatusModal);
+			}
+		});
+
+		proofPreviewClose.addEventListener("click", function closeProofPreview() {
+			closeModal(proofPreviewModal);
+		});
+
+		proofPreviewModal.addEventListener("click", function closeProofByOverlay(event) {
+			if (event.target === proofPreviewModal) {
+				closeModal(proofPreviewModal);
+			}
+		});
+
+		markAllCompleteBtn.addEventListener("click", function markEveryoneComplete() {
+			if (!activeStatusTaskId) {
+				return;
+			}
+			void setAllAssignmentsStatus(activeStatusTaskId, "completed");
+		});
+
+		taskStatusTableBody.addEventListener("click", function handleStatusActions(event) {
+			const actionButton = event.target.closest("[data-status-action]");
+			if (!actionButton) {
+				return;
+			}
+
+			if (!activeStatusTaskId) {
+				return;
+			}
+
+			const action = actionButton.getAttribute("data-status-action");
+			const roll = actionButton.getAttribute("data-roll");
+
+			if (action === "view-proof") {
+				void openProofPreview(activeStatusTaskId, roll);
+				return;
+			}
+
+			if (action === "set-pending") {
+				void setAssignmentStatus(activeStatusTaskId, roll, "pending");
+				return;
+			}
+
+			if (action === "approve") {
+				void setAssignmentStatus(activeStatusTaskId, roll, "completed");
+				return;
+			}
+
+			if (action === "reject") {
+				void setAssignmentStatus(activeStatusTaskId, roll, "pending");
+			}
+		});
+
+		document.addEventListener("keydown", function closeStatusOnEscape(event) {
+			if (event.key !== "Escape") {
+				return;
+			}
+			closeModal(taskStatusModal);
+			closeModal(proofPreviewModal);
+		});
+	}
+
+	function openModal(modalElement) {
+		if (!modalElement) {
+			return;
+		}
+		modalElement.removeAttribute("hidden");
+	}
+
+	function closeModal(modalElement) {
+		if (!modalElement) {
+			return;
+		}
+		modalElement.setAttribute("hidden", "");
+	}
+
+	function renderStudentList(filterText) {
+		const normalizedFilter = String(filterText || "").trim().toUpperCase();
+		const filteredRolls = studentRolls.filter(function matchesRoll(roll) {
+			return !normalizedFilter || roll.includes(normalizedFilter);
+		});
+
+		if (filteredRolls.length === 0) {
+			studentList.innerHTML = '<p class="task-empty">No students found for this search.</p>';
+			selectAllStudentsInput.checked = false;
+			selectAllStudentsInput.indeterminate = false;
+			return;
+		}
+
+		studentList.innerHTML = filteredRolls
+			.map(function buildStudentRow(roll) {
+				return [
+					'<label class="student-row">',
+					'<input class="student-select-item" type="checkbox" value="' + roll + '" />',
+					"<span>" + roll + "</span>",
+					"</label>"
+				].join("");
+			})
+			.join("");
+
+		studentList.querySelectorAll(".student-select-item").forEach(function bindStudentCheck(item) {
+			item.addEventListener("change", syncSelectAllState);
+		});
+
+		syncSelectAllState();
+	}
+
+	function syncSelectAllState() {
+		const visibleChecks = Array.from(studentList.querySelectorAll(".student-select-item"));
+		if (visibleChecks.length === 0) {
+			selectAllStudentsInput.checked = false;
+			selectAllStudentsInput.indeterminate = false;
+			return;
+		}
+
+		const checkedCount = visibleChecks.filter(function isChecked(checkbox) {
+			return checkbox.checked;
+		}).length;
+
+		selectAllStudentsInput.checked = checkedCount > 0 && checkedCount === visibleChecks.length;
+		selectAllStudentsInput.indeterminate = checkedCount > 0 && checkedCount < visibleChecks.length;
+	}
+
+	async function handleAssignTaskSubmit(event) {
+		event.preventDefault();
+
+		if (!canAddTasks()) {
+			return;
+		}
+
+		const title = assignTaskTitleInput.value.trim();
+		const subject = assignTaskSubjectInput.value.trim().toUpperCase();
+		const deadline = assignTaskDeadlineInput.value;
+		const requiresProof = assignTaskProofInput.checked;
+		const selectedStudents = Array.from(studentList.querySelectorAll(".student-select-item:checked")).map(function mapRoll(item) {
+			return item.value;
+		});
+
+		if (!title || !subject || !deadline || selectedStudents.length === 0) {
+			window.alert("Please fill all fields and select at least one student.");
+			return;
+		}
+
+		const newTask = {
+			id: getNextTaskId(),
+			title: title,
+			subject: subject,
+			deadline: deadline,
+			requiresProof: requiresProof,
+			assignments: selectedStudents.map(function mapAssignment(roll) {
+				return {
+					rollNumber: roll,
+					status: "pending",
+					proofName: null,
+					proofDataUrl: null
+				};
+			})
+		};
+
+		let createdTaskId = newTask.id;
+		if (supabaseClient) {
+			const remoteTaskId = await createTaskInSupabase(newTask);
+			if (remoteTaskId) {
+				createdTaskId = remoteTaskId;
+				await refreshTasksFromSupabase();
+			} else {
+				tasks.push(newTask);
+				saveTasks();
+			}
+		} else {
+			tasks.push(newTask);
+			saveTasks();
+		}
+
+		taskAssignForm.reset();
+		renderStudentList("");
+		closeModal(taskAssignModal);
+		renderTasks();
+		openStatusModal(createdTaskId);
+	}
+
+	async function createTaskInSupabase(taskPayload) {
+		if (!supabaseClient) {
+			return null;
+		}
+
+		try {
+			let taskInsert = null;
+			const taskInsertPayloads = [
+				{
+					title: taskPayload.title,
+					subject: taskPayload.subject,
+					deadline: taskPayload.deadline,
+					requires_proof: Boolean(taskPayload.requiresProof)
+				},
+				{
+					title: taskPayload.title,
+					subject: taskPayload.subject,
+					due_date: taskPayload.deadline,
+					requires_proof: Boolean(taskPayload.requiresProof)
+				},
+				{
+					title: taskPayload.title,
+					subject: taskPayload.subject,
+					deadline: taskPayload.deadline,
+					requiresProof: Boolean(taskPayload.requiresProof)
+				}
+			];
+
+			for (let i = 0; i < taskInsertPayloads.length; i += 1) {
+				taskInsert = await supabaseClient
+					.from("tasks")
+					.insert([taskInsertPayloads[i]])
+					.select("id")
+					.single();
+
+				if (!taskInsert.error && taskInsert.data) {
+					break;
+				}
+			}
+
+			if (!taskInsert || taskInsert.error || !taskInsert.data) {
+				throw (taskInsert && taskInsert.error) || new Error("Task insertion failed.");
+			}
+
+			const taskId = Number(taskInsert.data.id);
+			const assignmentInsert = await insertAssignmentsWithFallback(taskId, taskPayload.assignments);
+			if (assignmentInsert && assignmentInsert.error) {
+				throw assignmentInsert.error;
+			}
+
+			return taskId;
+		} catch (error) {
+			console.error("Supabase task create failed:", error);
+			window.alert("Task saved locally because server sync failed. " + extractErrorMessage(error));
+			return null;
+		}
+	}
+
+	function extractErrorMessage(error) {
+		if (!error) {
+			return "Unknown database error.";
+		}
+
+		if (typeof error === "string") {
+			return error;
+		}
+
+		const code = error.code ? "[" + error.code + "] " : "";
+		const message = error.message || "Database request failed.";
+		const hint = error.hint ? " Hint: " + error.hint : "";
+		return code + message + hint;
+	}
+
+	async function insertAssignmentsWithFallback(taskId, assignmentsList) {
+		if (!supabaseClient) {
+			return { error: { message: "Supabase client unavailable." } };
+		}
+
+		const rollKeyCandidates = ASSIGNMENT_ROLL_FIELDS.slice();
+		let lastResult = null;
+
+		for (let i = 0; i < rollKeyCandidates.length; i += 1) {
+			const rollKey = rollKeyCandidates[i];
+			const rowTemplate = {
+				task_id: taskId,
+				status: "pending",
+				proof_url: null
+			};
+
+			rowTemplate[rollKey] = "";
+			const rows = assignmentsList.map(function mapAssignmentRow(assignment) {
+				const row = Object.assign({}, rowTemplate);
+				row[rollKey] = assignment.rollNumber;
+				return row;
+			});
+
+			let payload = rows;
+			for (let attempt = 0; attempt < 4; attempt += 1) {
+				lastResult = await supabaseClient
+					.from("task_assignments")
+					.insert(payload);
+
+				if (!lastResult.error) {
+					activeAssignmentRollField = rollKey;
+					return lastResult;
+				}
+
+				const missingColumn = parseMissingColumnName(lastResult.error);
+				if (!missingColumn) {
+					break;
+				}
+
+				if (!Object.prototype.hasOwnProperty.call(payload[0] || {}, missingColumn)) {
+					break;
+				}
+
+				payload = payload.map(function stripMissingColumn(row) {
+					const nextRow = Object.assign({}, row);
+					delete nextRow[missingColumn];
+					return nextRow;
+				});
+			}
+		}
+
+		return lastResult || { error: { message: "Assignment insertion failed." } };
+	}
+
+	function getVisibleTasks() {
+		if (canAddTasks()) {
+			return tasks.slice();
+		}
+
+		if (!currentStudentRoll) {
+			return [];
+		}
+
+		return tasks.filter(function isAssignedTask(task) {
+			return Boolean(getAssignmentForRoll(task, currentStudentRoll));
+		});
+	}
+
+	function getTaskSummary(visibleTasks) {
+		return visibleTasks.reduce(
+			function summarize(accumulator, task) {
+				const assignment = getAssignmentForRoll(task, currentStudentRoll);
+				const status = canAddTasks() ? getTaskLevelStatus(task) : getTaskStatus(task, assignment);
+				if (status === "Completed") {
+					accumulator.completed += 1;
+				} else if (status === "Missed") {
+					accumulator.missed += 1;
+				} else {
+					accumulator.pending += 1;
+				}
+				return accumulator;
+			},
+			{ pending: 0, completed: 0, missed: 0 }
+		);
+	}
+
+	function getTaskStatus(task, assignment) {
+		if (!assignment) {
+			return "Pending";
+		}
+
+		if (assignment.status === "completed") {
+			return "Completed";
+		}
+
+		if (assignment.status === "missed") {
+			return "Missed";
+		}
+
+		return isTaskDeadlineMissed(task.deadline) ? "Missed" : "Pending";
+	}
+
+	function getTaskLevelStatus(task) {
+		const statuses = task.assignments.map(function mapStatus(assignment) {
+			return getTaskStatus(task, assignment);
+		});
+
+		if (statuses.length === 0) {
+			return "Pending";
+		}
+
+		if (statuses.every(function isDone(status) { return status === "Completed"; })) {
+			return "Completed";
+		}
+
+		if (statuses.every(function isMissed(status) { return status === "Missed"; })) {
+			return "Missed";
+		}
+
+		return "Pending";
+	}
+
+	function buildAssignmentMeta(task) {
+		const stats = getAssignmentStats(task);
+		return [
+			'<p class="task-assignment-badges">',
+			'<span class="task-badge task-badge-assigned">Assigned: ' + stats.total + "</span>",
+			'<span class="task-badge task-badge-completed">Completed: ' + stats.completed + "/" + stats.total + "</span>",
+			"</p>"
+		].join("");
+	}
+
+	function getAssignmentStats(task) {
+		const total = task.assignments.length;
+		const completed = task.assignments.filter(function isCompleted(assignment) {
+			return getTaskStatus(task, assignment) === "Completed";
+		}).length;
+
+		return { total: total, completed: completed };
+	}
+
+	function isTaskDeadlineMissed(deadlineIso) {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const deadlinePlusTwo = new Date(deadlineIso + "T00:00:00");
+		deadlinePlusTwo.setDate(deadlinePlusTwo.getDate() + 2);
+		return today > deadlinePlusTwo;
+	}
+
+	function getAssignmentForRoll(task, rollNumber) {
+		if (!rollNumber || !task || !Array.isArray(task.assignments)) {
+			return null;
+		}
+
+		return task.assignments.find(function findAssignment(assignment) {
+			return String(assignment.rollNumber).toUpperCase() === String(rollNumber).toUpperCase();
+		}) || null;
+	}
+
+	function updateMissedStatuses(taskList) {
+		taskList.forEach(function updateTask(task) {
+			task.assignments.forEach(function updateAssignment(assignment) {
+				if (assignment.status === "completed") {
+					return;
+				}
+
+				assignment.status = isTaskDeadlineMissed(task.deadline) ? "missed" : "pending";
+			});
+		});
+	}
+
+	function normalizeTask(rawTask) {
+		const normalizedTask = {
+			id: Number(rawTask.id) || getNextTaskId(),
+			title: String(rawTask.title || "Untitled Task"),
+			subject: String(rawTask.subject || "GENERAL").toUpperCase(),
+			deadline: String(rawTask.deadline || formatISODate(new Date())),
+			requiresProof: Boolean(rawTask.requiresProof),
+			assignments: []
+		};
+
+		if (Array.isArray(rawTask.assignments) && rawTask.assignments.length > 0) {
+			normalizedTask.assignments = rawTask.assignments.map(function normalizeAssignment(assignment) {
+				return {
+					rollNumber: String(assignment.rollNumber || "").toUpperCase(),
+					status: ["pending", "completed", "missed"].includes(assignment.status) ? assignment.status : "pending",
+					proofName: assignment.proofName || null,
+					proofPath: assignment.proofPath || null,
+					proofDataUrl: assignment.proofDataUrl || null
+				};
+			}).filter(function hasRoll(assignment) {
+				return Boolean(assignment.rollNumber);
+			});
+		} else if (Array.isArray(rawTask.assignedStudents) && rawTask.assignedStudents.length > 0) {
+			normalizedTask.assignments = rawTask.assignedStudents.map(function mapStudent(roll) {
+				return {
+					rollNumber: String(roll).toUpperCase(),
+					status: "pending",
+					proofName: null,
+					proofPath: null,
+					proofDataUrl: null
+				};
+			});
+		} else {
+			normalizedTask.assignments = studentRolls.map(function mapAllStudents(roll) {
+				return {
+					rollNumber: roll,
+					status: rawTask.completed ? "completed" : "pending",
+					proofName: rawTask.submittedFile || null,
+					proofPath: null,
+					proofDataUrl: null
+				};
+			});
+		}
+
+		return normalizedTask;
+	}
+
+	async function markComplete(taskId) {
+		const task = tasks.find(function findTask(item) {
+			return item.id === taskId;
+		});
+		if (!task) {
+			return;
+		}
+
+		const assignment = getAssignmentForRoll(task, currentStudentRoll);
+		if (!assignment) {
+			return;
+		}
+
+		if (supabaseClient) {
+			const updated = await updateAssignmentRow(taskId, assignment.rollNumber, {
+				status: "completed"
+			});
+			if (!updated) {
+				return;
+			}
+			await refreshTasksFromSupabase();
+			return;
+		}
+
+		assignment.status = "completed";
+		saveTasks();
+		renderTasks();
+	}
+
+	async function uploadProof(taskId, file) {
+		const task = tasks.find(function findTask(item) {
+			return item.id === taskId;
+		});
+		if (!task) {
+			return;
+		}
+
+		const assignment = getAssignmentForRoll(task, currentStudentRoll);
+		if (!assignment) {
+			return;
+		}
+
+		if (ALLOWED_PROOF_TYPES.indexOf(file.type) === -1) {
+			window.alert("Only PNG, JPG, and PDF files are allowed.");
+			return;
+		}
+
+		if (supabaseClient) {
+			const ownerKey = sanitizeStorageName(currentAuthUserId || userEmail || assignment.rollNumber || "student");
+			const filePath = String(taskId) + "/" + ownerKey + "/" + sanitizeStorageName(file.name);
+
+			const uploadResult = await supabaseClient.storage
+				.from(TASK_PROOF_BUCKET)
+				.upload(filePath, file, { upsert: true, contentType: file.type });
+
+			if (uploadResult.error) {
+				console.error("Proof upload failed:", uploadResult.error);
+				window.alert("Proof upload failed. Please verify storage bucket permissions.");
+				return;
+			}
+
+			const updated = await updateAssignmentRow(taskId, assignment.rollNumber, {
+				status: "completed",
+				proof_url: filePath,
+				proof_name: file.name
+			});
+			if (!updated) {
+				return;
+			}
+
+			await refreshTasksFromSupabase();
+			if (activeStatusTaskId === taskId) {
+				const activeTask = tasks.find(function findActiveTask(item) {
+					return item.id === taskId;
+				});
+				if (activeTask) {
+					renderStatusTable(activeTask);
+				}
+			}
+			return;
+		}
+
+		const applyProofData = function applyProof(dataUrl) {
+			assignment.proofName = file.name;
+			assignment.proofDataUrl = dataUrl;
+			assignment.proofPath = null;
+			assignment.status = "completed";
+			saveTasks();
+			renderTasks();
+			if (activeStatusTaskId === taskId) {
+				renderStatusTable(task);
+			}
+		};
+
+		if (typeof FileReader === "undefined") {
+			applyProofData(null);
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = function onLoad() {
+			applyProofData(String(reader.result || ""));
+		};
+		reader.onerror = function onError() {
+			applyProofData(null);
+		};
+		reader.readAsDataURL(file);
+	}
+
+	function openStatusModal(taskId) {
+		if (!taskStatusModal || !taskStatusTableBody) {
+			return;
+		}
+		activeStatusTaskId = taskId;
+		const task = tasks.find(function findTask(item) {
+			return item.id === taskId;
+		});
+		if (!task) {
+			return;
+		}
+
+		renderStatusTable(task);
+		openModal(taskStatusModal);
+	}
+
+	function renderStatusTable(task) {
+		if (!taskStatusTableBody) {
+			return;
+		}
+		taskStatusTableBody.innerHTML = task.assignments
+			.slice()
+			.sort(function byRoll(a, b) {
+				return a.rollNumber.localeCompare(b.rollNumber);
+			})
+			.map(function mapStatusRow(assignment) {
+				const status = getTaskStatus(task, assignment);
+				const statusClass = status.toLowerCase();
+				const proofButton = (assignment.proofName || assignment.proofPath)
+					? '<button type="button" class="task-action-button" data-status-action="view-proof" data-roll="' + assignment.rollNumber + '">View Proof</button>'
+					: "-";
+
+				return [
+					"<tr>",
+					"<td>" + escapeHtml(assignment.rollNumber) + "</td>",
+					'<td><span class="status-chip is-' + statusClass + '">' + status + "</span></td>",
+					"<td>" + proofButton + "</td>",
+					'<td><div class="table-actions">'
+						+ '<button type="button" class="task-action-button" data-status-action="set-pending" data-roll="' + assignment.rollNumber + '">Pending</button>'
+						+ '<button type="button" class="task-action-button" data-status-action="approve" data-roll="' + assignment.rollNumber + '">Approve</button>'
+						+ '<button type="button" class="task-action-button is-danger" data-status-action="reject" data-roll="' + assignment.rollNumber + '">Reject</button>'
+						+ "</div></td>",
+					"</tr>"
+				].join("");
+			})
+			.join("");
+	}
+
+	async function setAssignmentStatus(taskId, rollNumber, nextStatus) {
+		const task = tasks.find(function findTask(item) {
+			return item.id === taskId;
+		});
+		if (!task) {
+			return;
+		}
+
+		const assignment = getAssignmentForRoll(task, rollNumber);
+		if (!assignment) {
+			return;
+		}
+
+		if (supabaseClient) {
+			const updated = await updateAssignmentRow(taskId, rollNumber, {
+				status: nextStatus
+			});
+			if (!updated) {
+				return;
+			}
+			await refreshTasksFromSupabase();
+			const refreshedTask = tasks.find(function findRefreshedTask(item) {
+				return item.id === taskId;
+			});
+			if (refreshedTask) {
+				renderStatusTable(refreshedTask);
+			}
+			renderTasks();
+			return;
+		}
+
+		assignment.status = nextStatus;
+		saveTasks();
+		renderStatusTable(task);
+		renderTasks();
+	}
+
+	async function setAllAssignmentsStatus(taskId, nextStatus) {
+		const task = tasks.find(function findTask(item) {
+			return item.id === taskId;
+		});
+		if (!task) {
+			return;
+		}
+
+		if (supabaseClient) {
+			const bulkUpdate = await supabaseClient
+				.from("task_assignments")
+				.update({ status: nextStatus })
+				.eq("task_id", taskId);
+
+			if (bulkUpdate.error) {
+				console.error("Bulk status update failed:", bulkUpdate.error);
+				window.alert("Unable to update all students right now.");
+				return;
+			}
+
+			await refreshTasksFromSupabase();
+			const refreshedTask = tasks.find(function findRefreshedTask(item) {
+				return item.id === taskId;
+			});
+			if (refreshedTask) {
+				renderStatusTable(refreshedTask);
+			}
+			renderTasks();
+			return;
+		}
+
+		task.assignments.forEach(function setStatus(assignment) {
+			assignment.status = nextStatus;
+		});
+		saveTasks();
+		renderStatusTable(task);
+		renderTasks();
+	}
+
+	async function openProofPreview(taskId, rollNumber) {
+		if (!proofPreviewContent || !proofPreviewModal) {
+			return;
+		}
+		const task = tasks.find(function findTask(item) {
+			return item.id === taskId;
+		});
+		if (!task) {
+			return;
+		}
+
+		const targetRoll = rollNumber || currentStudentRoll;
+		const assignment = getAssignmentForRoll(task, targetRoll);
+		if (!assignment || (!assignment.proofName && !assignment.proofPath && !assignment.proofDataUrl)) {
+			return;
+		}
+
+		const displayProofName = assignment.proofName || extractFileNameFromPath(assignment.proofPath) || "Uploaded Proof";
+		const fileLabel = '<p><strong>File:</strong> ' + escapeHtml(displayProofName) + "</p>";
+		if (assignment.proofDataUrl && assignment.proofDataUrl.startsWith("data:image")) {
+			proofPreviewContent.innerHTML = fileLabel + '<img src="' + assignment.proofDataUrl + '" alt="Uploaded proof" />';
+		} else if (assignment.proofDataUrl) {
+			proofPreviewContent.innerHTML = fileLabel + '<a class="task-action-button" href="' + assignment.proofDataUrl + '" target="_blank" rel="noopener">Open Proof File</a>';
+		} else if (assignment.proofPath && supabaseClient) {
+			const signed = await supabaseClient.storage.from(TASK_PROOF_BUCKET).createSignedUrl(assignment.proofPath, 3600);
+			if (signed.error || !signed.data || !signed.data.signedUrl) {
+				proofPreviewContent.innerHTML = fileLabel + "<p>Unable to open proof preview right now.</p>";
+			} else if (/\.(png|jpg|jpeg)$/i.test(displayProofName)) {
+				proofPreviewContent.innerHTML = fileLabel + '<img src="' + signed.data.signedUrl + '" alt="Uploaded proof" />';
+			} else {
+				proofPreviewContent.innerHTML = fileLabel + '<a class="task-action-button" href="' + signed.data.signedUrl + '" target="_blank" rel="noopener">Open Proof File</a>';
+			}
+		} else {
+			proofPreviewContent.innerHTML = fileLabel + "<p>Preview not available for this file type.</p>";
+		}
+
+		openModal(proofPreviewModal);
+	}
+
+	function extractFileNameFromPath(pathValue) {
+		const value = String(pathValue || "");
+		if (!value) {
+			return "";
+		}
+		const parts = value.split("/");
+		return parts[parts.length - 1] || value;
+	}
+
+	async function updateAssignmentRow(taskId, rollNumber, updates) {
+		if (!supabaseClient) {
+			return false;
+		}
+
+		const normalizedRoll = String(rollNumber || "").toUpperCase();
+		const rollFieldCandidates = [];
+		if (activeAssignmentRollField) {
+			rollFieldCandidates.push(activeAssignmentRollField);
+		}
+		ASSIGNMENT_ROLL_FIELDS.forEach(function addCandidate(field) {
+			if (!rollFieldCandidates.includes(field)) {
+				rollFieldCandidates.push(field);
+			}
+		});
+
+		let result = null;
+		for (let i = 0; i < rollFieldCandidates.length; i += 1) {
+			const rollField = rollFieldCandidates[i];
+			const attemptResult = await attemptAssignmentUpdateWithRollField(taskId, normalizedRoll, updates, rollField);
+			result = attemptResult;
+			if (result && !result.error) {
+				activeAssignmentRollField = rollField;
+				break;
+			}
+
+			const missingColumn = parseMissingColumnName(result && result.error);
+			if (!missingColumn || missingColumn !== rollField) {
+				break;
+			}
+		}
+
+		if (!result || result.error) {
+			console.error("Assignment update failed:", result ? result.error : null);
+			window.alert("Unable to update task status right now. " + extractErrorMessage(result ? result.error : null));
+			return false;
+		}
+
+		return true;
+	}
+
+	async function attemptAssignmentUpdateWithRollField(taskId, normalizedRoll, updates, rollField) {
+		let updatePayload = Object.assign({}, updates);
+		let result = null;
+
+		for (let attempt = 0; attempt < 4; attempt += 1) {
+			result = await supabaseClient
+				.from("task_assignments")
+				.update(updatePayload)
+				.eq("task_id", taskId)
+				.eq(rollField, normalizedRoll);
+
+			if (!result.error) {
+				return result;
+			}
+
+			const missingColumn = parseMissingColumnName(result.error);
+			if (!missingColumn) {
+				return result;
+			}
+
+			if (missingColumn === rollField) {
+				return result;
+			}
+
+			if (!Object.prototype.hasOwnProperty.call(updatePayload, missingColumn)) {
+				return result;
+			}
+
+			const nextPayload = Object.assign({}, updatePayload);
+			delete nextPayload[missingColumn];
+			updatePayload = nextPayload;
+		}
+
+		return result;
+	}
+
+	function parseMissingColumnName(error) {
+		const message = String((error && error.message) || "");
+		const matchPgrst = /Could not find the '([^']+)' column/.exec(message);
+		if (matchPgrst && matchPgrst[1]) {
+			return matchPgrst[1];
+		}
+
+		const matchPostgres = /column\s+task_assignments\.([a-zA-Z0-9_]+)\s+does not exist/i.exec(message);
+		if (matchPostgres && matchPostgres[1]) {
+			return matchPostgres[1];
+		}
+
+		return null;
+	}
+
+	function sanitizeStorageName(value) {
+		return String(value || "file")
+			.replace(/[^a-zA-Z0-9._-]/g, "_")
+			.slice(0, 140);
+	}
+
+	function handleTaskListClick(event) {
+		const actionButton = event.target.closest("[data-action]");
+		if (!actionButton) {
+			return;
+		}
+
+		const taskId = Number(actionButton.getAttribute("data-task-id"));
+		const action = actionButton.getAttribute("data-action");
+
+		if (action === "complete") {
+			if (canActAsStudent()) {
+				void markComplete(taskId);
+			}
+			return;
+		}
+
+		if (action === "choose-proof") {
+			if (!canActAsStudent()) {
+				return;
+			}
+			const fileInput = document.getElementById("proofInput-" + taskId);
+			if (fileInput) {
+				fileInput.click();
+			}
+			return;
+		}
+
+		if (action === "view-status") {
+			if (!canAddTasks()) {
+				return;
+			}
+			openStatusModal(taskId);
+			return;
+		}
+
+		if (action === "view-proof") {
+			void openProofPreview(taskId, currentStudentRoll);
+			return;
+		}
+
+		if (action === "delete") {
+			if (!hasFullControl()) {
+				return;
+			}
+			void deleteTask(taskId);
+			return;
+		}
+
+		if (action === "edit") {
+			if (!hasFullControl()) {
+				return;
+			}
+			void editTask(taskId);
+		}
+	}
+
+	function handleTaskProofChange(event) {
+		const input = event.target;
+		if (!input.matches("input[type='file'][data-task-id]")) {
+			return;
+		}
+
+		const taskId = Number(input.getAttribute("data-task-id"));
+		if (!input.files || input.files.length === 0) {
+			return;
+		}
+
+		void uploadProof(taskId, input.files[0]);
+	}
+
+	async function editTask(taskId) {
+		const task = tasks.find(function matchTask(item) {
+			return item.id === taskId;
+		});
+		if (!task) {
+			return;
+		}
+
+		const title = window.prompt("Edit task title", task.title);
+		if (!title) {
+			return;
+		}
+
+		const subject = window.prompt("Edit task subject", task.subject);
+		if (!subject) {
+			return;
+		}
+
+		const deadline = window.prompt("Edit deadline (YYYY-MM-DD)", task.deadline);
+		if (!deadline || !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
+			return;
+		}
+
+		task.title = title.trim();
+		task.subject = subject.trim().toUpperCase();
+		task.deadline = deadline;
+
+		if (supabaseClient) {
+			const updateResult = await supabaseClient
+				.from("tasks")
+				.update({
+					title: task.title,
+					subject: task.subject,
+					deadline: task.deadline
+				})
+				.eq("id", taskId);
+
+			if (updateResult.error) {
+				console.error("Task update failed:", updateResult.error);
+				window.alert("Unable to edit task right now.");
+				return;
+			}
+
+			await refreshTasksFromSupabase();
+			return;
+		}
+
+		saveTasks();
+		renderTasks();
+	}
+
+	async function deleteTask(taskId) {
+		if (supabaseClient) {
+			const deleteAssignments = await supabaseClient
+				.from("task_assignments")
+				.delete()
+				.eq("task_id", taskId);
+
+			if (deleteAssignments.error) {
+				console.error("Assignment delete failed:", deleteAssignments.error);
+			}
+
+			const deleteTaskResult = await supabaseClient
+				.from("tasks")
+				.delete()
+				.eq("id", taskId);
+
+			if (deleteTaskResult.error) {
+				console.error("Task delete failed:", deleteTaskResult.error);
+				window.alert("Unable to delete task right now.");
+				return;
+			}
+
+			await refreshTasksFromSupabase();
+			return;
+		}
+
+		tasks = tasks.filter(function removeTask(item) {
+			return item.id !== taskId;
+		});
+		saveTasks();
+		renderTasks();
+	}
+
+	function buildTaskActions(task, status, assignment) {
+		const actions = [];
+		const allowStudentActions = canActAsStudent() && Boolean(assignment);
+		const studentStatus = allowStudentActions ? getTaskStatus(task, assignment) : status;
+		const hasProof = Boolean(assignment && (assignment.proofName || assignment.proofPath));
+		actions.push('<div class="task-actions">');
+
+		if (allowStudentActions) {
+			if (studentStatus !== "Completed" && studentStatus !== "Missed") {
+				if (task.requiresProof) {
+					actions.push('<input id="proofInput-' + task.id + '" data-task-id="' + task.id + '" type="file" accept=".png,.jpg,.jpeg,.pdf" hidden />');
+					actions.push('<button type="button" class="task-action-button" data-action="choose-proof" data-task-id="' + task.id + '">Upload Proof</button>');
+				} else {
+					actions.push('<button type="button" class="task-action-button" data-action="complete" data-task-id="' + task.id + '">Mark as Complete</button>');
+				}
+			}
+
+			if (hasProof) {
+				actions.push('<button type="button" class="task-action-button" data-action="view-proof" data-task-id="' + task.id + '">View Proof</button>');
+			}
+		}
+
+		if (canAddTasks()) {
+			actions.push('<button type="button" class="task-action-button is-primary" data-action="view-status" data-task-id="' + task.id + '">View Status Board</button>');
+			if (hasFullControl()) {
+				actions.push('<button type="button" class="task-action-button" data-action="edit" data-task-id="' + task.id + '">Edit</button>');
+				actions.push('<button type="button" class="task-action-button is-danger" data-action="delete" data-task-id="' + task.id + '">Delete</button>');
+			}
+		}
+
+		actions.push("</div>");
+		return actions.join("");
+	}
+
+	function configureTaskPermissions() {
+		if (canAddTasks()) {
+			taskForm.classList.remove("is-hidden");
+			tasksRoleNote.textContent = currentRole + " access";
+		} else {
+			taskForm.classList.add("is-hidden");
+			tasksRoleNote.textContent = "student access";
+		}
+	}
+
+	function canMarkTasks() {
+		return ["student", "cr", "class_incharge", "tech_support"].includes(currentRoleKey);
+	}
+
+	function canActAsStudent() {
+		if (!canMarkTasks() || !currentStudentRoll) {
+			return false;
+		}
+
+		if (currentRoleKey === "student") {
+			return true;
+		}
+
+		return HYBRID_STUDENT_ROLLS.includes(String(currentStudentRoll).toUpperCase());
+	}
+
+	function canAddTasks() {
+		return ["cr", "class_incharge", "tech_support"].includes(currentRoleKey);
+	}
+
+	function hasFullControl() {
+		return ["class_incharge", "tech_support"].includes(currentRoleKey);
 	}
 
 	function setupProfileSection() {
@@ -801,237 +2144,21 @@
 		themeToggle.setAttribute("title", mode === "light" ? "Light theme active (Sun)" : "Dark theme active (Moon)");
 	}
 
-	function getTaskSummary() {
-		return tasks.reduce(
-			function summarize(accumulator, task) {
-				const status = getTaskStatus(task);
-				if (status === "Completed") {
-					accumulator.completed += 1;
-				} else if (status === "Missed") {
-					accumulator.missed += 1;
-				} else {
-					accumulator.pending += 1;
-				}
-				return accumulator;
-			},
-			{ pending: 0, completed: 0, missed: 0 }
-		);
+	function buildStudentRolls() {
+		const list = [];
+		for (let roll = 301; roll <= 350; roll += 1) {
+			list.push("24H" + String(roll));
+		}
+		return list;
 	}
 
-	function getTaskStatus(task) {
-		if (task.completed) {
-			return "Completed";
+	function resolveStudentRoll(email) {
+		const lowerEmail = String(email || "").toLowerCase();
+		const match = /^24h(\d{3})@/.exec(lowerEmail);
+		if (!match) {
+			return null;
 		}
-
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const deadlinePlusTwo = new Date(task.deadline + "T00:00:00");
-		deadlinePlusTwo.setDate(deadlinePlusTwo.getDate() + 2);
-
-		if (today > deadlinePlusTwo) {
-			return "Missed";
-		}
-
-		return "Pending";
-	}
-
-	function markComplete(taskId) {
-		const task = tasks.find(function matchTask(item) {
-			return item.id === taskId;
-		});
-
-		if (!task) {
-			return;
-		}
-
-		task.completed = true;
-		saveTasks();
-		renderTasks();
-	}
-
-	function uploadProof(taskId, fileName) {
-		const task = tasks.find(function matchTask(item) {
-			return item.id === taskId;
-		});
-
-		if (!task) {
-			return;
-		}
-
-		task.submittedFile = fileName;
-		task.completed = true;
-		saveTasks();
-		renderTasks();
-	}
-
-	function addTask(event) {
-		event.preventDefault();
-
-		if (!canAddTasks()) {
-			return;
-		}
-
-		const title = taskTitleInput.value.trim();
-		const subject = taskSubjectInput.value.trim().toUpperCase();
-		const deadline = taskDeadlineInput.value;
-		const requiresProof = taskProofInput.checked;
-
-		if (!title || !subject || !deadline) {
-			return;
-		}
-
-		const newTask = {
-			id: getNextTaskId(),
-			title,
-			subject,
-			deadline,
-			requiresProof,
-			completed: false,
-			submittedFile: null
-		};
-
-		tasks.push(newTask);
-		saveTasks();
-		taskForm.reset();
-		renderTasks();
-	}
-
-	function handleTaskListClick(event) {
-		const actionButton = event.target.closest("[data-action]");
-		if (!actionButton) {
-			return;
-		}
-
-		const taskId = Number(actionButton.getAttribute("data-task-id"));
-		const action = actionButton.getAttribute("data-action");
-
-		if (action === "complete") {
-			if (canMarkTasks()) {
-				markComplete(taskId);
-			}
-			return;
-		}
-
-		if (action === "choose-proof") {
-			if (!canMarkTasks()) {
-				return;
-			}
-			const fileInput = document.getElementById("proofInput-" + taskId);
-			if (fileInput) {
-				fileInput.click();
-			}
-			return;
-		}
-
-		if (action === "delete") {
-			if (!hasFullControl()) {
-				return;
-			}
-			tasks = tasks.filter(function removeTask(item) {
-				return item.id !== taskId;
-			});
-			saveTasks();
-			renderTasks();
-			return;
-		}
-
-		if (action === "edit") {
-			if (!hasFullControl()) {
-				return;
-			}
-			editTask(taskId);
-		}
-	}
-
-	function handleTaskProofChange(event) {
-		const input = event.target;
-		if (!input.matches("input[type='file'][data-task-id]")) {
-			return;
-		}
-
-		const taskId = Number(input.getAttribute("data-task-id"));
-		if (!input.files || input.files.length === 0) {
-			return;
-		}
-
-		uploadProof(taskId, input.files[0].name);
-	}
-
-	function editTask(taskId) {
-		const task = tasks.find(function matchTask(item) {
-			return item.id === taskId;
-		});
-		if (!task) {
-			return;
-		}
-
-		const title = window.prompt("Edit task title", task.title);
-		if (!title) {
-			return;
-		}
-
-		const subject = window.prompt("Edit task subject", task.subject);
-		if (!subject) {
-			return;
-		}
-
-		const deadline = window.prompt("Edit deadline (YYYY-MM-DD)", task.deadline);
-		if (!deadline || !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
-			return;
-		}
-
-		task.title = title.trim();
-		task.subject = subject.trim().toUpperCase();
-		task.deadline = deadline;
-		saveTasks();
-		renderTasks();
-	}
-
-	function buildTaskActions(task, status) {
-		const canMark = canMarkTasks();
-		const isDone = status === "Completed";
-		const actions = [];
-
-		actions.push('<div class="task-actions">');
-
-		if (!isDone && canMark) {
-			if (task.requiresProof) {
-				actions.push('<input id="proofInput-' + task.id + '" data-task-id="' + task.id + '" type="file" hidden />');
-				actions.push('<button type="button" class="task-action-button" data-action="choose-proof" data-task-id="' + task.id + '">Upload Proof</button>');
-			} else {
-				actions.push('<button type="button" class="task-action-button" data-action="complete" data-task-id="' + task.id + '">Mark as Complete</button>');
-			}
-		}
-
-		if (hasFullControl()) {
-			actions.push('<button type="button" class="task-action-button" data-action="edit" data-task-id="' + task.id + '">Edit</button>');
-			actions.push('<button type="button" class="task-action-button is-danger" data-action="delete" data-task-id="' + task.id + '">Delete</button>');
-		}
-
-		actions.push("</div>");
-		return actions.join("");
-	}
-
-	function configureTaskPermissions() {
-		if (canAddTasks()) {
-			taskForm.classList.remove("is-hidden");
-			tasksRoleNote.textContent = currentRole + " access";
-		} else {
-			taskForm.classList.add("is-hidden");
-			tasksRoleNote.textContent = "student access";
-		}
-	}
-
-	function canMarkTasks() {
-		return ["student", "cr", "class_incharge", "tech_support"].includes(currentRole);
-	}
-
-	function canAddTasks() {
-		return ["cr", "class_incharge", "tech_support"].includes(currentRole);
-	}
-
-	function hasFullControl() {
-		return ["class_incharge", "tech_support"].includes(currentRole);
+		return "24H" + match[1];
 	}
 
 	function getNextTaskId() {
@@ -1045,17 +2172,21 @@
 		localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
 	}
 
-	function loadTasks() {
+	function loadTasks(seedIfEmpty) {
 		const storedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
 		if (storedTasks) {
 			try {
 				const parsed = JSON.parse(storedTasks);
 				if (Array.isArray(parsed)) {
-					return parsed;
+					return parsed.map(normalizeTask);
 				}
 			} catch (error) {
 				// Falls back to seed data if storage is malformed.
 			}
+		}
+
+		if (!seedIfEmpty) {
+			return [];
 		}
 
 		const seedTasks = [
@@ -1065,13 +2196,20 @@
 				subject: "JAVA",
 				deadline: "2026-03-25",
 				requiresProof: true,
-				completed: false,
-				submittedFile: null
+				assignments: studentRolls.map(function mapSeedStudents(roll) {
+					return {
+						rollNumber: roll,
+						status: "pending",
+						proofName: null,
+						proofDataUrl: null
+					};
+				})
 			}
 		];
 
-		localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(seedTasks));
-		return seedTasks;
+		const normalizedSeed = seedTasks.map(normalizeTask);
+		localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(normalizedSeed));
+		return normalizedSeed;
 	}
 
 	function escapeHtml(value) {
