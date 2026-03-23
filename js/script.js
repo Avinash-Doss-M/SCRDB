@@ -746,6 +746,8 @@
 
 	function applyTheme(mode) {
 		document.body.classList.toggle("theme-light", mode === "light");
+		themeToggle.setAttribute("aria-label", mode === "light" ? "Switch to dark mode" : "Switch to light mode");
+		themeToggle.setAttribute("title", mode === "light" ? "Light theme active (Sun)" : "Dark theme active (Moon)");
 	}
 
 	function getTaskSummary() {
